@@ -296,6 +296,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .ds-pill.green{background:#dcfce7;color:#166534;border:1px solid #86efac;}
 .ds-placeholder{text-align:center;padding:40px 20px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;}
 
+/* GRAF TABS */
+.graf-tab{background:var(--surface);border:1.5px solid var(--border);color:var(--text-muted);padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:var(--sans);box-shadow:var(--shadow-sm);}
+.graf-tab:hover{border-color:var(--accent);color:var(--accent);}
+.graf-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(22,163,74,.3);}
+.graf-panel{display:none;}.graf-panel.active{display:block;}
+
 @media(max-width:900px){
   .sidebar{width:190px;}
   .q-grid{grid-template-columns:repeat(2,1fr);}
@@ -836,90 +842,194 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 
   <!-- ══ PAGE: GRAFICI ══ -->
   <div class="page" id="page-grafici">
-    <div class="page-header">
-      <h2>Grafici</h2>
-      <p>Analisi visuale dei consumi nel tempo</p>
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h2>Grafici</h2>
+        <p>Analisi visuale dei consumi nel tempo</p>
+      </div>
     </div>
 
-    <!-- POMPAGGI PER ANNO -->
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">💧 Pompaggi — kWh mensili per anno</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">Ogni linea rappresenta un anno · Ascisse = mesi · Ordinate = kWh</div>
-        </div>
-        <div id="pompaggiLegend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
-      </div>
-      <div id="pompaggiEmpty" style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">
-        Carica i dati Blindo per visualizzare il grafico
-      </div>
-      <canvas id="pompaggiCanvas" style="display:none;width:100%;"></canvas>
+    <!-- SUB-TAB BUTTONS -->
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+      <button class="graf-tab active" id="gtab-kpi"     onclick="showGrafTab('kpi')">🏭 KPI Stabilimento</button>
+      <button class="graf-tab"        id="gtab-pompaggi" onclick="showGrafTab('pompaggi')">💧 Pompaggi</button>
+      <button class="graf-tab"        id="gtab-aria"     onclick="showGrafTab('aria')">💨 Aria Compressa</button>
+      <button class="graf-tab"        id="gtab-frigo"    onclick="showGrafTab('frigo')">🧊 Frigoriferi</button>
     </div>
 
-    <!-- ═══ ARIA COMPRESSA KPI ═══ -->
-    <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin:24px 0 8px;padding-left:4px;">💨 ARIA COMPRESSA — KPI</div>
+    <!-- ══ KPI STABILIMENTO ══ -->
+    <div class="graf-panel active" id="gpanel-kpi">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:16px;">🏭 KPI STABILIMENTO — Indici di Prestazione Energetica</div>
 
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">kWh Compressori / Nm³ aria prodotta</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ Nm³ totali mese</div>
+      <!-- IPG Elettrico Stabilimento -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">IPG Elettrico Stabilimento</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(kWh Media + kWh Bassa) ÷ kg prodotti</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-muted);">TARGET <span style="color:#dc2626;font-weight:700;font-size:13px;">2.590</span> kWh/kg</div>
+            <div id="kpiStab1Legend" style="display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+          </div>
         </div>
-        <div id="kpiAria1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        <div id="kpiStab1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo, Bollette e Produzione</div>
+        <canvas id="kpiStab1Canvas" style="display:none;width:100%;"></canvas>
       </div>
-      <div id="kpiAria1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Aria</div>
-      <canvas id="kpiAria1Canvas" style="display:none;width:100%;"></canvas>
+
+      <!-- IPS Stampaggio -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">IPS Elettrico — Stampaggio</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Lotto A + Lotto B) ÷ kg prodotti</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-muted);">TARGET <span style="color:#dc2626;font-weight:700;font-size:13px;">1.830</span> kWh/kg</div>
+            <div id="kpiStab2Legend" style="display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+          </div>
+        </div>
+        <div id="kpiStab2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiStab2Canvas" style="display:none;width:100%;"></canvas>
+      </div>
+
+      <!-- IPS Acqua fredda -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">IPS Elettrico — Acqua Fredda</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">Gruppi Frigo ÷ kg prodotti</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-muted);">TARGET <span style="color:#dc2626;font-weight:700;font-size:13px;">0.178</span> kWh/kg</div>
+            <div id="kpiStab3Legend" style="display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+          </div>
+        </div>
+        <div id="kpiStab3Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiStab3Canvas" style="display:none;width:100%;"></canvas>
+      </div>
+
+      <!-- IPS Aria -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">IPS Elettrico — Aria</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">Compressori ÷ kg prodotti</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-muted);">TARGET <span style="color:#dc2626;font-weight:700;font-size:13px;">0.259</span> kWh/kg</div>
+            <div id="kpiStab4Legend" style="display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+          </div>
+        </div>
+        <div id="kpiStab4Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiStab4Canvas" style="display:none;width:100%;"></canvas>
+      </div>
+
+      <!-- EnPI Aria Compressa -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">EnPI Aria Compressa</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">Compressori ÷ flusso aria (Nm³)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;font-family:var(--mono);font-size:11px;color:var(--text-muted);">TARGET <span style="color:#dc2626;font-weight:700;font-size:13px;">0.170</span> kWh/Nm³</div>
+            <div id="kpiStab5Legend" style="display:flex;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+          </div>
+        </div>
+        <div id="kpiStab5Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Aria</div>
+        <canvas id="kpiStab5Canvas" style="display:none;width:100%;"></canvas>
+      </div>
     </div>
 
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">kWh Compressori / kg prodotto</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ kg trasformati mese</div>
+    <!-- ══ POMPAGGI ══ -->
+    <div class="graf-panel" id="gpanel-pompaggi">
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">💧 Pompaggi — kWh mensili per anno</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">Ogni linea rappresenta un anno · Ascisse = mesi · Ordinate = kWh</div>
+          </div>
+          <div id="pompaggiLegend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
-        <div id="kpiAria2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        <div id="pompaggiEmpty" style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica i dati Blindo per visualizzare il grafico</div>
+        <canvas id="pompaggiCanvas" style="display:none;width:100%;"></canvas>
       </div>
-      <div id="kpiAria2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-      <canvas id="kpiAria2Canvas" style="display:none;width:100%;"></canvas>
     </div>
 
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">kWh Compressori / ore lavorate</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ ore di lavoro mese</div>
+    <!-- ══ ARIA COMPRESSA ══ -->
+    <div class="graf-panel" id="gpanel-aria">
+      <!-- Note eventi -->
+      <div class="card" style="padding:14px 20px;margin-bottom:8px;background:#fffbeb;border-color:#fde68a;">
+        <div style="font-size:11px;font-weight:700;color:#92400e;font-family:var(--mono);letter-spacing:.5px;margin-bottom:8px;">📌 EVENTI RILEVANTI</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <div class="aria-nota" data-tip="Modificato parametri da gennaio a giugno: abbassate le pressioni" style="cursor:help;">
+            <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-family:var(--mono);font-weight:700;">GEN 2024</span>
+            <span style="font-size:11px;color:#92400e;margin-left:6px;">Modifica parametri pressioni</span>
+          </div>
+          <div class="aria-nota" data-tip="Analisi perdite aria compressa" style="cursor:help;">
+            <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-family:var(--mono);font-weight:700;">GEN 2025</span>
+            <span style="font-size:11px;color:#92400e;margin-left:6px;">Analisi perdite aria</span>
+          </div>
+          <div class="aria-nota" data-tip="Spostati compressori il 28/11/2025: IVR60 sala fuori, tolto GDI75" style="cursor:help;">
+            <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-family:var(--mono);font-weight:700;">DIC 2025</span>
+            <span style="font-size:11px;color:#92400e;margin-left:6px;">Spostati compressori</span>
+          </div>
+          <div class="aria-nota" data-tip="Ritarati compressori + sostituiti filtri di linea (delta P tra NH e Lotto A alto)" style="cursor:help;">
+            <span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;font-family:var(--mono);font-weight:700;">MAR 2026</span>
+            <span style="font-size:11px;color:#92400e;margin-left:6px;">Ritarati compressori + filtri</span>
+          </div>
         </div>
-        <div id="kpiAria3Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
       </div>
-      <div id="kpiAria3Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-      <canvas id="kpiAria3Canvas" style="display:none;width:100%;"></canvas>
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div><div style="font-size:15px;font-weight:700;">kWh Compressori / Nm³ aria prodotta</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ Nm³ totali mese</div></div>
+          <div id="kpiAria1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        </div>
+        <div id="kpiAria1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Aria</div>
+        <canvas id="kpiAria1Canvas" style="display:none;width:100%;"></canvas>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div><div style="font-size:15px;font-weight:700;">kWh Compressori / kg prodotto</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ kg trasformati mese</div></div>
+          <div id="kpiAria2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        </div>
+        <div id="kpiAria2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiAria2Canvas" style="display:none;width:100%;"></canvas>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div><div style="font-size:15px;font-weight:700;">kWh Compressori / ore lavorate</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(Compressori + Sala NH) ÷ ore di lavoro mese</div></div>
+          <div id="kpiAria3Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        </div>
+        <div id="kpiAria3Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiAria3Canvas" style="display:none;width:100%;"></canvas>
+      </div>
     </div>
 
-    <!-- ═══ FRIGORIFERI KPI ═══ -->
-    <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin:24px 0 8px;padding-left:4px;">🧊 FRIGORIFERI — KPI</div>
-
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">kWh Frigoriferi / kg prodotto</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(RS370 + RS400 + FrigoRS330 + FrigoAtem) ÷ kg trasformati mese</div>
+    <!-- ══ FRIGORIFERI ══ -->
+    <div class="graf-panel" id="gpanel-frigo">
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div><div style="font-size:15px;font-weight:700;">kWh Frigoriferi / kg prodotto</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(RS370 + RS400 + FrigoRS330 + FrigoAtem) ÷ kg trasformati mese</div></div>
+          <div id="kpiFrigo1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
-        <div id="kpiFrigo1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        <div id="kpiFrigo1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiFrigo1Canvas" style="display:none;width:100%;"></canvas>
       </div>
-      <div id="kpiFrigo1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-      <canvas id="kpiFrigo1Canvas" style="display:none;width:100%;"></canvas>
-    </div>
-
-    <div class="card" style="padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;">kWh Frigoriferi / ore lavorate</div>
-          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(RS370 + RS400 + FrigoRS330 + FrigoAtem) ÷ ore di lavoro mese</div>
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div><div style="font-size:15px;font-weight:700;">kWh Frigoriferi / ore lavorate</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-top:2px;">(RS370 + RS400 + FrigoRS330 + FrigoAtem) ÷ ore di lavoro mese</div></div>
+          <div id="kpiFrigo2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
-        <div id="kpiFrigo2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
+        <div id="kpiFrigo2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
+        <canvas id="kpiFrigo2Canvas" style="display:none;width:100%;"></canvas>
       </div>
-      <div id="kpiFrigo2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-      <canvas id="kpiFrigo2Canvas" style="display:none;width:100%;"></canvas>
     </div>
 
   </div><!-- /page-grafici -->
@@ -1061,10 +1171,57 @@ const YEAR_COLORS = [
 ];
 const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
+function showGrafTab(name) {
+  document.querySelectorAll('.graf-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.graf-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('gtab-'+name).classList.add('active');
+  document.getElementById('gpanel-'+name).classList.add('active');
+  if (name==='pompaggi') renderPompaggiChart();
+  if (name==='aria'||name==='frigo') renderKpiCharts();
+  if (name==='kpi') renderKpiStabilimento();
+}
+
 function renderGrafici() {
+  // Default: mostra KPI stabilimento
+  showGrafTab('kpi');
+}
+
+function renderKpiStabilimento() {
   if (!allData.length) return;
-  renderPompaggiChart();
-  renderKpiCharts();
+
+  const compByYear   = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+  const frigoByYear  = getMonthlyByYearMulti([C.rs370, C.rs400, C.frigoRS330, C.frigoAtem]);
+  const lottoAByYear = getMonthlyByYearMulti([C.blindo1,C.blindo2,C.blindo3,C.blindo4,C.blindo5,C.blindo6,C.blindo7,C.blindo8,C.blindo9]);
+  const plant2ByYear = getMonthlyByYearMulti([C.plant2sx,C.plant2dx]);
+  const b400ByYear   = getMonthlyByYearMulti([C.blindo400,C.blindo630]);
+  const ariaByYear   = getAriaNmcByYearMonth();
+  const {kg:kgByYear} = getProdByYearMonth();
+
+  // LottoB = blindo400+630 - plant2
+  const lottoBByYear = {};
+  const stampaByYear = {};
+  [...new Set(allData.map(r=>r.dt.getUTCFullYear()))].sort().forEach(y => {
+    const b400  = b400ByYear[y]  ||new Array(12).fill(0);
+    const plant = plant2ByYear[y]||new Array(12).fill(0);
+    const lottoA= lottoAByYear[y]||new Array(12).fill(0);
+    lottoBByYear[y] = b400.map((v,m)=>Math.max(0,v-plant[m]));
+    stampaByYear[y] = lottoA.map((v,m)=>v+lottoBByYear[y][m]);
+  });
+
+  // Bollette per anno/mese
+  const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+  const bollByYear = {};
+  BOLLETTE.forEach(b => {
+    const mi = MESI_IT.indexOf(b.m); if (mi<0) return;
+    if (!bollByYear[b.a]) bollByYear[b.a] = new Array(12).fill(0);
+    bollByYear[b.a][mi] = b.km + b.kb;
+  });
+
+  renderKpiChart('kpiStab1Canvas','kpiStab1Empty','kpiStab1Legend', bollByYear,   kgByYear,   'kWh/kg',  3, [], 2.590);
+  renderKpiChart('kpiStab2Canvas','kpiStab2Empty','kpiStab2Legend', stampaByYear, kgByYear,   'kWh/kg',  3, [], 1.830);
+  renderKpiChart('kpiStab3Canvas','kpiStab3Empty','kpiStab3Legend', frigoByYear,  kgByYear,   'kWh/kg',  3, [], 0.178);
+  renderKpiChart('kpiStab4Canvas','kpiStab4Empty','kpiStab4Legend', compByYear,   kgByYear,   'kWh/kg',  3, [], 0.259);
+  renderKpiChart('kpiStab5Canvas','kpiStab5Empty','kpiStab5Legend', compByYear,   ariaByYear, 'kWh/Nm³', 4, [], 0.170);
 }
 
 // ── Helper: aggregate blindo column(s) by year/month ──
@@ -1103,7 +1260,7 @@ function getProdByYearMonth() {
 }
 
 // ── Generic KPI chart: numerator/denominator by year/month ──
-function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabel, decimals=3, annotations=[]) {
+function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabel, decimals=3, annotations=[], target=null) {
   const canvas = document.getElementById(canvasId);
   const empty  = document.getElementById(emptyId);
   const legend = document.getElementById(legendId);
@@ -1166,6 +1323,22 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
     ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+cH); ctx.stroke();
   });
 
+  // Target line
+  if (target !== null && target <= maxVal) {
+    const ty = PAD.top + cH - (cH * target / maxVal);
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath(); ctx.moveTo(PAD.left, ty); ctx.lineTo(PAD.left+cW, ty); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#dc2626';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`TARGET ${target}`, PAD.left+4, ty-4);
+    ctx.restore();
+  }
+
   // Bande denominatore per ogni anno (barre trasparenti)
   const barW = xStep * 0.6 / years.length;
   years.forEach((year,yi)=>{
@@ -1181,52 +1354,6 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
       ctx.fillStyle=`rgba(${r},${g},${b},0.15)`;
       ctx.fillRect(x-barW/2, PAD.top+cH-barH, barW, barH);
     });
-  });
-
-  // Annotazioni stile pompaggi
-  annotations.forEach(ann => {
-    const mi = ann.month - 1; // 0-based
-    // Trova il valore medio delle linee in quel mese per posizionare il cerchio
-    const vals = years.map(y=>(ratioByYear[y]||[])[mi]||0).filter(v=>v>0);
-    if (!vals.length) return;
-    const avgVal = vals.reduce((s,v)=>s+v,0)/vals.length;
-    const ax = PAD.left + mi * xStep;
-    const ay = PAD.top + cH - (cH * avgVal / maxVal);
-
-    // Cerchio grande rosso
-    ctx.beginPath();
-    ctx.arc(ax, ay, 14, 0, Math.PI*2);
-    ctx.strokeStyle = '#dc2626';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
-    ctx.fillStyle   = 'rgba(220,38,38,0.08)';
-    ctx.fill();
-
-    // Linea verticale tratteggiata
-    ctx.setLineDash([4,3]);
-    ctx.strokeStyle = '#dc2626';
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    ctx.moveTo(ax, ay+16);
-    ctx.lineTo(ax, PAD.top+cH);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Etichetta
-    ctx.font = '10px monospace';
-    const labelText = ann.label;
-    const tw = ctx.measureText(labelText).width;
-    const labelX = ax + 18;
-    const labelY = ay - 10;
-    const lx = (labelX + tw + 10 > W) ? ax - tw - 22 : labelX;
-
-    ctx.fillStyle = 'rgba(220,38,38,0.9)';
-    ctx.beginPath();
-    ctx.rect(lx - 4, labelY - 12, tw + 8, 18);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'left';
-    ctx.fillText(labelText, lx, labelY);
   });
 
   // Lines
@@ -1268,15 +1395,13 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
   `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;">
     <div style="width:10px;height:10px;background:rgba(100,100,100,.15);border-radius:2px;"></div>
     <span style="color:#64748b;">${denLabel}</span>
-  </div>` +
-  (annotations.length ? `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;"><span style="color:#dc2626;">● Evento</span></div>` : '');
+  </div>`;
 
   // Store data for tooltip
   canvas._ratioByYear=ratioByYear; canvas._years=years;
   canvas._maxVal=maxVal; canvas._pad=PAD; canvas._cW=cW; canvas._cH=cH;
   canvas._xStep=xStep; canvas._decimals=decimals; canvas._yLabel=yLabel;
   canvas._denByYear=denByYear; canvas._maxDen=maxDen;
-  canvas._annotations=annotations;
   canvas.onmousemove=kpiTooltip;
   canvas.onmouseleave=()=>{
     const t=document.getElementById('graficoTooltip'); if(t)t.style.display='none';
@@ -1287,7 +1412,7 @@ function kpiTooltip(e) {
   const canvas=e.target;
   const rect=canvas.getBoundingClientRect();
   const mx=e.clientX-rect.left;
-  const {_ratioByYear,_years,_maxVal,_pad:PAD,_xStep,_decimals,_yLabel,_denByYear,_annotations}=canvas;
+  const {_ratioByYear,_years,_maxVal,_pad:PAD,_xStep,_decimals,_yLabel,_denByYear}=canvas;
   const mi=Math.round((mx-PAD.left)/_xStep);
   if(mi<0||mi>11)return;
   let tip=document.getElementById('graficoTooltip');
@@ -3032,8 +3157,30 @@ function renderProduzione() {
   if(sub) sub.textContent = `Kg · Ore · Kg/h · Scarto%`;
 }
 
-// ════════════════════════════════════════════════════
-// INIT
+// ── Tooltip per note aria ──
+document.querySelectorAll('.aria-nota').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    let tip = document.getElementById('ariaNoteTooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'ariaNoteTooltip';
+      tip.style.cssText = 'position:fixed;background:#1f2937;color:#fff;padding:8px 14px;border-radius:8px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;max-width:320px;line-height:1.6;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+      document.body.appendChild(tip);
+    }
+    tip.textContent = el.dataset.tip;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 10) + 'px';
+  });
+  el.addEventListener('mousemove', e => {
+    const tip = document.getElementById('ariaNoteTooltip');
+    if (tip) { tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px'; }
+  });
+  el.addEventListener('mouseleave', () => {
+    const tip = document.getElementById('ariaNoteTooltip');
+    if (tip) tip.style.display = 'none';
+  });
+});
 // ════════════════════════════════════════════════════
 loadFromStorage();
 loadAria();
