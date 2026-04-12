@@ -1183,33 +1183,50 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
     });
   });
 
-  // Annotazioni verticali
+  // Annotazioni stile pompaggi
   annotations.forEach(ann => {
-    const y = ann.year, m = ann.month-1; // month 1-based
-    // Find if this year is in the chart (show on x axis position of month)
-    const x = PAD.left + m*xStep;
-    ctx.save();
-    ctx.setLineDash([3,3]);
-    ctx.strokeStyle='#f59e0b';
-    ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+cH); ctx.stroke();
-    ctx.setLineDash([]);
-    // Label rotated at bottom
-    ctx.save();
-    ctx.translate(x, PAD.top+cH+30);
-    ctx.rotate(-Math.PI/6);
-    ctx.fillStyle='#b45309';
-    ctx.font='bold 9px monospace';
-    ctx.textAlign='right';
-    ctx.fillText(`${ann.label.slice(0,30)}`, 0, 0);
-    ctx.restore();
-    // Diamond marker at top
-    ctx.fillStyle='#f59e0b';
+    const mi = ann.month - 1; // 0-based
+    // Trova il valore medio delle linee in quel mese per posizionare il cerchio
+    const vals = years.map(y=>(ratioByYear[y]||[])[mi]||0).filter(v=>v>0);
+    if (!vals.length) return;
+    const avgVal = vals.reduce((s,v)=>s+v,0)/vals.length;
+    const ax = PAD.left + mi * xStep;
+    const ay = PAD.top + cH - (cH * avgVal / maxVal);
+
+    // Cerchio grande rosso
     ctx.beginPath();
-    ctx.moveTo(x,PAD.top+4); ctx.lineTo(x+5,PAD.top+10);
-    ctx.lineTo(x,PAD.top+16); ctx.lineTo(x-5,PAD.top+10);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
+    ctx.arc(ax, ay, 14, 0, Math.PI*2);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+    ctx.fillStyle   = 'rgba(220,38,38,0.08)';
+    ctx.fill();
+
+    // Linea verticale tratteggiata
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay+16);
+    ctx.lineTo(ax, PAD.top+cH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Etichetta
+    ctx.font = '10px monospace';
+    const labelText = ann.label;
+    const tw = ctx.measureText(labelText).width;
+    const labelX = ax + 18;
+    const labelY = ay - 10;
+    const lx = (labelX + tw + 10 > W) ? ax - tw - 22 : labelX;
+
+    ctx.fillStyle = 'rgba(220,38,38,0.9)';
+    ctx.beginPath();
+    ctx.rect(lx - 4, labelY - 12, tw + 8, 18);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.fillText(labelText, lx, labelY);
   });
 
   // Lines
@@ -1252,7 +1269,7 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
     <div style="width:10px;height:10px;background:rgba(100,100,100,.15);border-radius:2px;"></div>
     <span style="color:#64748b;">${denLabel}</span>
   </div>` +
-  (annotations.length ? `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;"><span style="color:#b45309;">◆ Evento</span></div>` : '');
+  (annotations.length ? `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;"><span style="color:#dc2626;">● Evento</span></div>` : '');
 
   // Store data for tooltip
   canvas._ratioByYear=ratioByYear; canvas._years=years;
@@ -2462,7 +2479,7 @@ let ariaData = []; // {key, dt, portata, pmax, pmedia}
 function saveAria() {
   try {
     localStorage.setItem(ARIA_KEY, JSON.stringify(ariaData.map(r=>[r.key,r.dt.getTime(),r.portata,r.pmax,r.pmedia])));
-  } catch(e) { alert('⚠ Dati Aria troppo grandi per localStorage. Usa backup.'); }
+  } catch(e) { console.warn('Aria: localStorage pieno, dati solo in memoria.'); }
 }
 
 function loadAria() {
