@@ -1135,9 +1135,21 @@ function restoreBackup(file) {
           console.log('[restore] Blindo OK:', blindoCount);
         }
         if (data.aria && data.aria.length) {
-          ariaData = data.aria.map(r=>({key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]}));
+          // Supporta entrambi i formati backup:
+          // vecchio: [key, ts, portata, pmax, pmedia] (len=5)
+          // nuovo:   [ts, portata, pmedia] (len=3)
+          ariaData = data.aria.map(r => {
+            if (r.length === 5) {
+              return {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]};
+            } else {
+              const dt = new Date(r[0]);
+              const y=dt.getUTCFullYear(),mo=dt.getUTCMonth()+1,d=dt.getUTCDate(),h=dt.getUTCHours();
+              const key=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}_${String(h).padStart(2,'0')}`;
+              return {key, dt, portata:r[1]||0, pmax:0, pmedia:r[2]||0};
+            }
+          });
           ariaData.sort((a,b)=>a.dt-b.dt);
-          saveAria();
+          saveAria(); // prova a salvare nel localStorage (può fallire, non è critico)
           ariaCount = ariaData.length;
           console.log('[restore] Aria OK:', ariaCount);
         }
@@ -1197,7 +1209,7 @@ function showDS(name) {
   document.querySelectorAll('.ds-panel').forEach(p => p.classList.toggle('active', p.id==='ds-'+name));
   if (name==='bollette') renderBollette();
   if (name==='produzione') renderProduzione();
-  if (name==='aria') { runAriaQuality(); renderAriaMensile(); }
+  if (name==='aria') requestAnimationFrame(()=>{ runAriaQuality(); renderAriaMensile(); });
 }
 
 function showPage(name) {
