@@ -1961,7 +1961,7 @@ function resetCategory(cat) {
     if(bi) bi.style.display='none';
   }
   if (cat==='aria' || cat==='all') {
-    ariaData=[]; localStorage.removeItem(ARIA_KEY); localStorage.removeItem('energyAriaData_v1');
+    ariaData=[]; sessionStorage.removeItem(ARIA_KEY); localStorage.removeItem(ARIA_KEY); localStorage.removeItem('energyAriaData_v1');
     updateAriaPill();
     document.getElementById('ariaQualityContent').style.display='none';
     document.getElementById('ariaNoDataMsg').style.display='block';
@@ -2661,24 +2661,31 @@ const ARIA_KEY = 'energyAriaData_v2'; // v2 = nuovo formato compresso
 let ariaData = []; // {key, dt, portata, pmax, pmedia}
 
 function saveAria() {
+  // localStorage è pieno (Blindo occupa ~4.8MB) — usiamo sessionStorage
+  // I dati Aria restano in memoria durante la sessione
+  // Per persistenza usa il backup JSON
   try {
-    // [ts_ms, portata_int, pmedia_1dec] — ~25 chars/riga = ~570KB totali
     const compact = ariaData.map(r=>[r.dt.getTime(), Math.round(r.portata), +r.pmedia.toFixed(1)]);
-    const json = JSON.stringify(compact);
-    localStorage.setItem(ARIA_KEY, json);
-    console.log('[aria] Salvato OK:', Math.round(json.length/1024), 'KB');
+    sessionStorage.setItem(ARIA_KEY, JSON.stringify(compact));
+    console.log('[aria] Salvato in sessionStorage OK');
   } catch(e) {
-    console.warn('[aria] Salvataggio fallito:', e.message);
+    console.warn('[aria] sessionStorage fallito, dati solo in memoria:', e.message);
   }
 }
 
 function loadAria() {
+  // Prova prima sessionStorage, poi localStorage (legacy)
   try {
-    const raw = localStorage.getItem(ARIA_KEY);
+    const raw = sessionStorage.getItem(ARIA_KEY) || localStorage.getItem(ARIA_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.length) return;
     ariaData = parsed.map(r => {
+      if (r.length === 5) {
+        // Formato legacy backup: [key, ts, portata, pmax, pmedia]
+        return {key:r[0], dt:new Date(r[1]), portata:r[2]||0, pmax:r[3]||0, pmedia:r[4]||0};
+      }
+      // Formato compresso: [ts, portata, pmedia]
       const dt = new Date(r[0]);
       const y=dt.getUTCFullYear(),mo=dt.getUTCMonth()+1,d=dt.getUTCDate(),h=dt.getUTCHours();
       const key=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}_${String(h).padStart(2,'0')}`;
@@ -3225,6 +3232,7 @@ function renderProduzione() {
   </tr>`;
 
   // KPI
+  if (!PROD_MENSILE.length) return;
   const firstM = PROD_MENSILE[0];
   const lastM  = PROD_MENSILE[PROD_MENSILE.length-1];
   const firstDay = `${String(firstM.firstDay||1).padStart(2,'0')}/${String(firstM.m).padStart(2,'0')}/${firstM.a}`;
