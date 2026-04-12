@@ -1220,14 +1220,17 @@ function showGrafTab(name) {
   document.querySelectorAll('.graf-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('gtab-'+name).classList.add('active');
   document.getElementById('gpanel-'+name).classList.add('active');
-  if (name==='pompaggi') renderPompaggiChart();
-  if (name==='aria'||name==='frigo') renderKpiCharts();
-  if (name==='kpi') renderKpiStabilimento();
+  // Aspetta che il DOM aggiorni la visibilità prima di renderizzare
+  requestAnimationFrame(()=>{
+    if (name==='pompaggi') renderPompaggiChart();
+    if (name==='aria'||name==='frigo') renderKpiCharts();
+    if (name==='kpi') renderKpiStabilimento();
+  });
 }
 
 function renderGrafici() {
-  // Default: mostra KPI stabilimento
-  showGrafTab('kpi');
+  // Aspetta che la pagina sia visibile prima di renderizzare
+  requestAnimationFrame(()=>{ showGrafTab('kpi'); });
 }
 
 function renderKpiStabilimento() {
@@ -1330,7 +1333,10 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
   canvas.style.display='block'; empty.style.display='none';
 
   const dpr = window.devicePixelRatio||1;
-  const W   = canvas.parentElement.clientWidth - 40;
+  // Forza visibilità temporanea per misurare la larghezza corretta
+  const wasHidden = canvas.style.display === 'none';
+  canvas.style.display='block';
+  const W   = Math.max(canvas.parentElement.clientWidth - 40, 300);
   const H   = 380;
   canvas.width  = W*dpr; canvas.height = H*dpr;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
