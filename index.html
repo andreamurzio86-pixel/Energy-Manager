@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Consumi Energetici</title>
+<title>Energy Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1103,7 +1103,7 @@ function getProdByYearMonth() {
 }
 
 // ── Generic KPI chart: numerator/denominator by year/month ──
-function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabel, decimals=3) {
+function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabel, decimals=3, annotations=[]) {
   const canvas = document.getElementById(canvasId);
   const empty  = document.getElementById(emptyId);
   const legend = document.getElementById(legendId);
@@ -1124,7 +1124,7 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
 
   const dpr = window.devicePixelRatio||1;
   const W   = canvas.parentElement.clientWidth - 40;
-  const H   = 300;
+  const H   = 320;
   canvas.width  = W*dpr; canvas.height = H*dpr;
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
   const ctx = canvas.getContext('2d');
@@ -1137,6 +1137,13 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
   years.forEach(y=>ratioByYear[y].forEach(v=>{if(v>maxVal)maxVal=v;}));
   const mag = Math.pow(10, Math.floor(Math.log10(maxVal||1)));
   maxVal = Math.ceil(maxVal/mag)*mag || 1;
+
+  // Find max denominator for band scaling
+  let maxDen=0;
+  years.forEach(y=>{
+    const den=denByYear[y]||[];
+    den.forEach(v=>{if(v>maxDen)maxDen=v;});
+  });
 
   ctx.clearRect(0,0,W,H);
 
@@ -1157,6 +1164,52 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
     ctx.fillText(m,x,PAD.top+cH+18);
     ctx.strokeStyle='#f3f4f6'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+cH); ctx.stroke();
+  });
+
+  // Bande denominatore per ogni anno (barre trasparenti)
+  const barW = xStep * 0.6 / years.length;
+  years.forEach((year,yi)=>{
+    const color=YEAR_COLORS[yi%YEAR_COLORS.length];
+    const den=denByYear[year]||new Array(12).fill(0);
+    den.forEach((val,mi)=>{
+      if(val===0||maxDen===0)return;
+      const x = PAD.left + mi*xStep - (barW*years.length/2) + yi*barW + barW/2;
+      const barH = cH*(val/maxDen)*0.3; // max 30% altezza
+      ctx.fillStyle = color.replace(')',',0.15)').replace('rgb','rgba').replace('#','');
+      // simple rgba from hex
+      const r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);
+      ctx.fillStyle=`rgba(${r},${g},${b},0.15)`;
+      ctx.fillRect(x-barW/2, PAD.top+cH-barH, barW, barH);
+    });
+  });
+
+  // Annotazioni verticali
+  annotations.forEach(ann => {
+    const y = ann.year, m = ann.month-1; // month 1-based
+    // Find if this year is in the chart (show on x axis position of month)
+    const x = PAD.left + m*xStep;
+    ctx.save();
+    ctx.setLineDash([3,3]);
+    ctx.strokeStyle='#f59e0b';
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+cH); ctx.stroke();
+    ctx.setLineDash([]);
+    // Label rotated at bottom
+    ctx.save();
+    ctx.translate(x, PAD.top+cH+30);
+    ctx.rotate(-Math.PI/6);
+    ctx.fillStyle='#b45309';
+    ctx.font='bold 9px monospace';
+    ctx.textAlign='right';
+    ctx.fillText(`${ann.label.slice(0,30)}`, 0, 0);
+    ctx.restore();
+    // Diamond marker at top
+    ctx.fillStyle='#f59e0b';
+    ctx.beginPath();
+    ctx.moveTo(x,PAD.top+4); ctx.lineTo(x+5,PAD.top+10);
+    ctx.lineTo(x,PAD.top+16); ctx.lineTo(x-5,PAD.top+10);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
   });
 
   // Lines
@@ -1184,16 +1237,29 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
   ctx.textAlign='center'; ctx.fillStyle='#6b7280'; ctx.font='10px monospace';
   ctx.fillText(yLabel,0,0); ctx.restore();
 
-  // Legend
-  legend.innerHTML=years.map((y,i)=>
-    `<div style="display:flex;align-items:center;gap:5px;">
+  // Legend — lines + band info
+  const denLabel = yLabel.includes('Nm³') ? 'Nm³ aria' : yLabel.includes('kg') ? 'Kg prod.' : 'Ore lav.';
+  legend.innerHTML = years.map((y,i)=>{
+    const r2=parseInt(YEAR_COLORS[i%YEAR_COLORS.length].slice(1,3),16);
+    const g2=parseInt(YEAR_COLORS[i%YEAR_COLORS.length].slice(3,5),16);
+    const b2=parseInt(YEAR_COLORS[i%YEAR_COLORS.length].slice(5,7),16);
+    return `<div style="display:flex;align-items:center;gap:5px;">
       <div style="width:20px;height:3px;background:${YEAR_COLORS[i%YEAR_COLORS.length]};border-radius:2px;"></div>
-      <span>${y}</span></div>`).join('');
+      <div style="width:10px;height:10px;background:rgba(${r2},${g2},${b2},.2);border-radius:2px;"></div>
+      <span>${y}</span></div>`;
+  }).join('') +
+  `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;">
+    <div style="width:10px;height:10px;background:rgba(100,100,100,.15);border-radius:2px;"></div>
+    <span style="color:#64748b;">${denLabel}</span>
+  </div>` +
+  (annotations.length ? `<div style="display:flex;align-items:center;gap:5px;margin-left:8px;padding-left:8px;border-left:1px solid #e5e7eb;"><span style="color:#b45309;">◆ Evento</span></div>` : '');
 
-  // Tooltip
+  // Store data for tooltip
   canvas._ratioByYear=ratioByYear; canvas._years=years;
   canvas._maxVal=maxVal; canvas._pad=PAD; canvas._cW=cW; canvas._cH=cH;
   canvas._xStep=xStep; canvas._decimals=decimals; canvas._yLabel=yLabel;
+  canvas._denByYear=denByYear; canvas._maxDen=maxDen;
+  canvas._annotations=annotations;
   canvas.onmousemove=kpiTooltip;
   canvas.onmouseleave=()=>{
     const t=document.getElementById('graficoTooltip'); if(t)t.style.display='none';
@@ -1204,22 +1270,39 @@ function kpiTooltip(e) {
   const canvas=e.target;
   const rect=canvas.getBoundingClientRect();
   const mx=e.clientX-rect.left;
-  const {_ratioByYear,_years,_maxVal,_pad:PAD,_xStep,_decimals,_yLabel}=canvas;
+  const {_ratioByYear,_years,_maxVal,_pad:PAD,_xStep,_decimals,_yLabel,_denByYear,_annotations}=canvas;
   const mi=Math.round((mx-PAD.left)/_xStep);
   if(mi<0||mi>11)return;
   let tip=document.getElementById('graficoTooltip');
   if(!tip){
     tip=document.createElement('div'); tip.id='graficoTooltip';
-    tip.style.cssText='position:fixed;background:#1f2937;color:#fff;padding:8px 12px;border-radius:8px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:1.8;';
+    tip.style.cssText='position:fixed;background:#1f2937;color:#fff;padding:8px 12px;border-radius:8px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:1.9;max-width:280px;';
     document.body.appendChild(tip);
   }
-  let html=`<div style="font-weight:700;margin-bottom:4px;">${MESI_SHORT[mi]}</div>`;
+  const denLabel = _yLabel.includes('Nm³')?'Nm³':'_yLabel'.includes('kg')?'kg':'ore';
+  let html=`<div style="font-weight:700;margin-bottom:4px;font-size:12px;">${MESI_SHORT[mi]}</div>`;
+
   _years.forEach((y,i)=>{
     const val=(_ratioByYear[y]||[])[mi]||0;
     if(val===0)return;
+    const den=(_denByYear&&_denByYear[y]?_denByYear[y][mi]:0)||0;
     const col=YEAR_COLORS[i%YEAR_COLORS.length];
-    html+=`<div><span style="color:${col};">●</span> ${y}: <b>${val.toFixed(_decimals)}</b> ${_yLabel}</div>`;
+    const denStr = den>0 ? ` <span style="color:#94a3b8;font-size:10px;">(${den.toLocaleString('it-IT',{maximumFractionDigits:0})} ${_yLabel.includes('Nm³')?'Nm³':_yLabel.includes('kg')?'kg':'h'})</span>` : '';
+    html+=`<div><span style="color:${col};">●</span> ${y}: <b>${val.toFixed(_decimals)}</b> ${_yLabel}${denStr}</div>`;
   });
+
+  // Annotations for this month
+  if(_annotations){
+    const anns=_annotations.filter(a=>a.month-1===mi);
+    if(anns.length){
+      html+=`<div style="border-top:1px solid #374151;margin-top:6px;padding-top:6px;">`;
+      anns.forEach(a=>{
+        html+=`<div style="color:#fbbf24;">◆ ${a.year} — ${a.label}</div>`;
+      });
+      html+=`</div>`;
+    }
+  }
+
   tip.innerHTML=html; tip.style.display='block';
   tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-10)+'px';
 }
@@ -1230,17 +1313,25 @@ function renderKpiCharts() {
   const ariaByYear = getAriaNmcByYearMonth();
   const {kg:kgByYear, ore:oreByYear} = getProdByYearMonth();
 
+  // Annotazioni aria compressa
+  const ariaAnnotations = [
+    {year:2024, month:1,  label:'Modificato parametri (gen-giu): abbassate pressioni'},
+    {year:2025, month:1,  label:'Analisi perdite aria'},
+    {year:2025, month:12, label:'Spostati compressori 28/11 (IVR60 sala fuori, tolto GDI75)'},
+    {year:2026, month:3,  label:'Ritarati compressori + sostituiti filtri di linea'},
+  ];
+
   // Aria KPI 1: kWh Comp / Nm³
   renderKpiChart('kpiAria1Canvas','kpiAria1Empty','kpiAria1Legend',
-    compByYear, ariaByYear, 'kWh/Nm³', 4);
+    compByYear, ariaByYear, 'kWh/Nm³', 4, ariaAnnotations);
 
   // Aria KPI 2: kWh Comp / kg
   renderKpiChart('kpiAria2Canvas','kpiAria2Empty','kpiAria2Legend',
-    compByYear, kgByYear, 'kWh/kg', 3);
+    compByYear, kgByYear, 'kWh/kg', 3, ariaAnnotations);
 
   // Aria KPI 3: kWh Comp / ore
   renderKpiChart('kpiAria3Canvas','kpiAria3Empty','kpiAria3Legend',
-    compByYear, oreByYear, 'kWh/h', 2);
+    compByYear, oreByYear, 'kWh/h', 2, ariaAnnotations);
 
   // Frigo KPI 1: kWh Frigo / kg
   renderKpiChart('kpiFrigo1Canvas','kpiFrigo1Empty','kpiFrigo1Legend',
@@ -2600,8 +2691,9 @@ document.getElementById('fileAriaAdd').addEventListener('change',function(e){han
 function parseProdFile(text) {
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   const byMonth = {};
-  let skipped = 0;
+  let skipped = 0, duplicati = 0;
   const START = new Date(Date.UTC(2023,6,31));
+  const seenKeys = new Set(); // per dedup pressa+data+commessa
 
   for (const line of lines) {
     const l = line.trim(); if (!l) continue;
@@ -2609,7 +2701,6 @@ function parseProdFile(text) {
     if (cols.length < 9) { skipped++; continue; }
     if (cols[0].trim() === 'Pressa') continue; // header
 
-    // Colonne corrette con Stampo e Commessa:
     // [0]=Pressa [1]=Zona [2]=Stampo [3]=Commessa [4]=PezziOK [5]=Scarto [6]=Ore [7]=Kg [8]=Data
     const dp = cols[8].trim().split('/');
     if (dp.length !== 3) { skipped++; continue; }
@@ -2619,6 +2710,13 @@ function parseProdFile(text) {
     if (isNaN(dd)||isNaN(mm)||isNaN(yyyy)||yyyy<2020||yyyy>2035) { skipped++; continue; }
     const dt = new Date(Date.UTC(yyyy,mm-1,dd));
     if (dt < START) { skipped++; continue; }
+
+    // Controllo duplicati: Pressa + Data + Commessa
+    const pressa   = cols[0].trim();
+    const commessa = cols[3].trim();
+    const dupKey   = `${pressa}|${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}|${commessa}`;
+    if (seenKeys.has(dupKey)) { duplicati++; continue; }
+    seenKeys.add(dupKey);
 
     const pezzi  = parseInt(cols[4])||0;
     const scarto = parseInt(cols[5])||0;
@@ -2637,8 +2735,9 @@ function parseProdFile(text) {
   }
 
   const rows = Object.values(byMonth).sort((a,b) => a.a!==b.a ? a.a-b.a : a.m-b.m);
-  console.log(`[parseProd] mesi:${rows.length} skip:${skipped}`);
-  return { rows, skipped };
+  console.log(`[parseProd] mesi:${rows.length} skip:${skipped} duplicati:${duplicati}`);
+  if (duplicati > 0) console.warn(`[parseProd] ⚠ ${duplicati} righe duplicate rimosse (Pressa+Data+Commessa)`);
+  return { rows, skipped, duplicati };
 }
 
 function handleProdFile(file, mode) {
@@ -2778,7 +2877,8 @@ function processProdRows(pr, mode, pw) {
   PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
   pw.style.display='none';
   renderProduzione();
-  alert(`✓ ${pr.rows.length} mesi caricati/aggiornati${pr.skipped>0?' ('+pr.skipped+' righe scartate)':''}.`);
+  const dupMsg = pr.duplicati > 0 ? `\n⚠ ${pr.duplicati} righe duplicate rimosse (Pressa+Data+Commessa).` : '';
+  alert(`✓ ${pr.rows.length} mesi caricati/aggiornati${pr.skipped>0?' ('+pr.skipped+' righe scartate)':''}${dupMsg}.`);
 }
 
 document.getElementById('fileProd').addEventListener('change',function(e){handleProdFile(e.target.files[0],'replace');this.value='';});
