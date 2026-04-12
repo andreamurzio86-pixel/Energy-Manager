@@ -2649,56 +2649,40 @@ let ariaData = []; // {key, dt, portata, pmax, pmedia}
 
 function saveAria() {
   try {
-    // Salvo senza key (si ricalcola) e con portata intera per risparmiare spazio
-    const compact = ariaData.map(r=>[r.dt.getTime(), Math.round(r.portata), +r.pmax.toFixed(2), +r.pmedia.toFixed(2)]);
+    // Formato compresso: [ts, portata_int, pmedia_1dec] — rimuovo pmax per risparmiare
+    const compact = ariaData.map(r=>[r.dt.getTime(), Math.round(r.portata), +r.pmedia.toFixed(1)]);
     localStorage.setItem(ARIA_KEY, JSON.stringify(compact));
     console.log('[aria] Salvato localStorage OK, size:', JSON.stringify(compact).length, 'bytes');
   } catch(e) {
-    // Se ancora troppo grande salvo solo timestamp+portata (basta per KPI)
-    try {
-      const minimal = ariaData.map(r=>[r.dt.getTime(), Math.round(r.portata)]);
-      localStorage.setItem(ARIA_KEY+'_min', JSON.stringify(minimal));
-      console.warn('[aria] Salvato in modalità minimale (solo portata)');
-    } catch(e2) {
-      console.warn('[aria] localStorage pieno - dati solo in memoria, usa backup JSON');
-    }
+    console.warn('[aria] localStorage pieno - dati solo in memoria, usa backup JSON');
   }
 }
 
 function loadAria() {
   try {
-    // Prova formato normale
     const raw = localStorage.getItem(ARIA_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.length && parsed[0].length === 4) {
-        // Nuovo formato compresso [ts, portata, pmax, pmedia]
-        ariaData = parsed.map(r => {
-          const dt = new Date(r[0]);
-          const y=dt.getUTCFullYear(),mo=dt.getUTCMonth(),d=dt.getUTCDate(),h=dt.getUTCHours();
-          const key=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}_${String(h).padStart(2,'0')}`;
-          return {key, dt, portata:r[1], pmax:r[2], pmedia:r[3]};
-        });
-      } else {
-        // Vecchio formato [key, ts, portata, pmax, pmedia]
-        ariaData = parsed.map(r=>({key:r[0],dt:new Date(r[1]),portata:r[2],pmax:r[3],pmedia:r[4]}));
-      }
-      updateAriaPill();
-      console.log('[aria] Caricato dal localStorage:', ariaData.length, 'righe');
-      return;
-    }
-    // Prova formato minimale (solo portata)
-    const rawMin = localStorage.getItem(ARIA_KEY+'_min');
-    if (rawMin) {
-      const parsed = JSON.parse(rawMin);
+      if (!parsed.length) return;
       ariaData = parsed.map(r => {
         const dt = new Date(r[0]);
         const y=dt.getUTCFullYear(),mo=dt.getUTCMonth(),d=dt.getUTCDate(),h=dt.getUTCHours();
         const key=`${y}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}_${String(h).padStart(2,'0')}`;
-        return {key, dt, portata:r[1], pmax:0, pmedia:0};
+        if (r.length === 3) {
+          // Formato nuovo: [ts, portata, pmedia]
+          return {key, dt, portata:r[1], pmax:0, pmedia:r[2]};
+        } else if (r.length === 4) {
+          // Formato vecchio: [ts, portata, pmax, pmedia]
+          return {key, dt, portata:r[1], pmax:r[2], pmedia:r[3]};
+        } else if (r.length === 5) {
+          // Formato molto vecchio: [key, ts, portata, pmax, pmedia]
+          return {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]};
+        }
+        return {key, dt, portata:r[1]||0, pmax:0, pmedia:0};
       });
       updateAriaPill();
-      console.log('[aria] Caricato formato minimale:', ariaData.length, 'righe');
+      renderAriaMensile();
+      console.log('[aria] Caricato dal localStorage:', ariaData.length, 'righe');
     }
   } catch(e) { console.warn('Aria load error:', e); }
 }
@@ -2802,7 +2786,12 @@ function renderAriaMensile() {
   const tbody = document.getElementById('ariaTableBody');
   const tfoot = document.getElementById('ariaTableFoot');
   const card  = document.getElementById('ariaTableCard');
-  if (!tbody || !ariaData.length) return;
+  if (!tbody) return;
+
+  if (!ariaData.length) {
+    if (card) card.style.display = 'none';
+    return;
+  }
   card.style.display = 'block';
 
   const MESI_A = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
