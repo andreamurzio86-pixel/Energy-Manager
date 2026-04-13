@@ -3119,7 +3119,7 @@ function readXlsx(file, mode, pw, pl) {
       try {
         const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
         const ws = wb.Sheets[wb.SheetNames[0]];
-        // Use raw:true to get actual values including Date objects
+        // raw:true: Date→oggetto Date, ore→numero decimale (0.58=14h), numeri→number
         const rows = XLSX.utils.sheet_to_json(ws, {raw:true, defval:''});
         console.log('[xlsx] Righe lette:', rows.length);
         if (rows.length > 0) console.log('[xlsx] Prima riga:', JSON.stringify(rows[0]));
@@ -3137,30 +3137,38 @@ function readXlsx(file, mode, pw, pl) {
 
 function parseProdXlsx(rows) {
   const byMonth = {};
-  let skipped = 0;
+  const seenKeys = new Set();
+  let skipped = 0, duplicati = 0;
   const START = new Date(Date.UTC(2023,6,31));
 
   for (const r of rows) {
     try {
-      // Find date column (try various names)
+      // Data — prova vari nomi colonna
       const dateRaw = r['Data'] ?? r['data'] ?? r['DATE'] ?? null;
       if (dateRaw === '' || dateRaw === null || dateRaw === undefined) { skipped++; continue; }
 
       let dt;
       if (dateRaw instanceof Date) {
+        // SheetJS cellDates:true → oggetto Date corretto
         dt = new Date(Date.UTC(dateRaw.getFullYear(), dateRaw.getMonth(), dateRaw.getDate()));
       } else if (typeof dateRaw === 'number') {
-        // Excel serial date
+        // Numero seriale Excel
         const d = new Date(Math.round((dateRaw - 25569) * 86400 * 1000));
         dt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
       } else if (typeof dateRaw === 'string') {
-        // Try dd/mm/yyyy or yyyy-mm-dd
-        const dp = dateRaw.includes('/') ? dateRaw.split('/') : dateRaw.split('-');
-        if (dp.length === 3) {
+        if (dateRaw.includes('T')) {
+          // ISO string — correggi timezone
+          const d = new Date(dateRaw);
+          const localDate = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+          dt = new Date(Date.UTC(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()));
+        } else if (dateRaw.includes('/')) {
+          const dp = dateRaw.split('/');
           const a=parseInt(dp[0]),b=parseInt(dp[1]),c=parseInt(dp[2]);
-          // if first part > 31 it's yyyy-mm-dd
           if (a > 31) dt = new Date(Date.UTC(a,b-1,c));
           else dt = new Date(Date.UTC(c<100?c+2000:c, b-1, a));
+        } else if (dateRaw.includes('-')) {
+          const dp = dateRaw.split('-');
+          dt = new Date(Date.UTC(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2])));
         } else { skipped++; continue; }
       } else { skipped++; continue; }
 
@@ -3168,19 +3176,27 @@ function parseProdXlsx(rows) {
 
       const dd=dt.getUTCDate(), mm=dt.getUTCMonth()+1, yyyy=dt.getUTCFullYear();
 
+      // Dedup per pressa+data+commessa
+      const pressa   = String(r['Pressa'] ?? r['pressa'] ?? '');
+      const commessa = String(r['Commessa'] ?? r['commessa'] ?? '');
+      const dupKey   = `${pressa}|${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}|${commessa}`;
+      if (seenKeys.has(dupKey)) { duplicati++; continue; }
+      seenKeys.add(dupKey);
+
       const pezzi  = parseInt(r['Pezzi OK']  ?? r['pezzi ok']  ?? 0) || 0;
       const scarto = parseInt(r['Scarti']     ?? r['Scarto']    ?? 0) || 0;
       const kgRaw  = r['Kg trasformati'] ?? r['Kg'] ?? 0;
-      const kg     = parseFloat(kgRaw.toString().replace(',','.')) || 0;
+      const kg     = parseFloat(String(kgRaw).replace(',','.')) || 0;
 
-      // Ore: can be string "hh:mm:ss" (with hh>24), number, or Date
-      const oreRaw = r['Ore di lavoro'] ?? r['ore'] ?? '0:00:00';
+      // Ore: con raw:true SheetJS → numero decimale (es. 0.5791 = 13:54)
+      // oppure stringa "hh:mm:ss" se la cella è formattata come testo
+      const oreRaw = r['Ore di lavoro'] ?? r['ore'] ?? 0;
       let ore = 0;
-      if (typeof oreRaw === 'string') {
+      if (typeof oreRaw === 'string' && oreRaw.includes(':')) {
         const op = oreRaw.split(':');
         ore = parseInt(op[0]||0) + (parseInt(op[1]||0)/60) + (parseInt(op[2]||0)/3600);
       } else if (typeof oreRaw === 'number') {
-        ore = oreRaw * 24; // Excel time fraction
+        ore = oreRaw < 1 ? oreRaw * 24 : oreRaw; // <1 = frazione di giorno, >=1 = già in ore
       }
 
       const key = `${yyyy}-${String(mm).padStart(2,'0')}`;
@@ -3195,8 +3211,13 @@ function parseProdXlsx(rows) {
   }
 
   const result = Object.values(byMonth).sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
-  console.log(`[parseProdXlsx] mesi:${result.length} skip:${skipped}`);
-  return {rows:result, skipped};
+  console.log(`[parseProdXlsx] mesi:${result.length} skip:${skipped} dup:${duplicati}`);
+  // Log primo mese come verifica
+  if (result.length) {
+    const r0 = result[result.length-1];
+    console.log(`[parseProdXlsx] ultimo mese: ${r0.a}/${r0.m} kg=${r0.kg.toFixed(0)} ore=${r0.ore.toFixed(1)}`);
+  }
+  return {rows:result, skipped, duplicati};
 }
 
 function processProdRows(pr, mode, pw) {
