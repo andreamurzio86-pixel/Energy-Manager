@@ -352,6 +352,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <span class="nav-icon">📂</span> Gestione Dati
   </div>
   <div class="sidebar-bottom">
+    <button onclick="avviaAggiornamentoSettimanale()" style="background:linear-gradient(135deg,#16a34a,#0d9488);border:none;color:#fff;font-weight:700;font-size:12px;padding:10px;letter-spacing:.3px;">🔄 Aggiornamento Settimanale</button>
+    <div style="border-top:1px solid rgba(255,255,255,.1);margin:8px 0;"></div>
     <button onclick="exportData()">💾 Backup JSON</button>
     <button onclick="document.getElementById('fileBackup').click()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);">📥 Ripristina Backup</button>
     <input type="file" id="fileBackup" accept=".json" style="display:none">
@@ -3607,7 +3609,269 @@ function formatIaOutput(testo) {
 }
 
 // ════════════════════════════════════════════════════
-loadFromStorage();
+// AGGIORNAMENTO SETTIMANALE
+// ════════════════════════════════════════════════════
+
+function avviaAggiornamentoSettimanale() {
+  // Crea modale se non esiste
+  let modal = document.getElementById('modalSettimanale');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalSettimanale';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div style="font-size:18px;font-weight:700;">🔄 Aggiornamento Settimanale</div>
+          <button onclick="document.getElementById('modalSettimanale').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;">✕</button>
+        </div>
+
+        <div style="font-size:12px;color:#6b7280;font-family:monospace;margin-bottom:20px;background:#f8fafc;padding:10px 14px;border-radius:8px;">
+          Seleziona i file della settimana. Solo i file selezionati verranno aggiornati — gli altri rimarranno invariati.
+        </div>
+
+        <!-- Backup -->
+        <div class="sw-step" id="sw-step-backup">
+          <div class="sw-label">1. Backup attuale <span style="color:#6b7280;font-weight:400;">(obbligatorio)</span></div>
+          <div class="sw-file-row" onclick="document.getElementById('sw-file-backup').click()">
+            <span class="sw-icon">📦</span>
+            <span id="sw-name-backup" class="sw-name">Seleziona Ultimo_Backup.json</span>
+            <input type="file" id="sw-file-backup" accept=".json" style="display:none" onchange="swSetFile('backup',this)">
+          </div>
+        </div>
+
+        <!-- Blindo -->
+        <div class="sw-step">
+          <div class="sw-label">2. Blindo <span style="color:#6b7280;font-weight:400;">(opzionale)</span></div>
+          <div class="sw-file-row" onclick="document.getElementById('sw-file-blindo').click()">
+            <span class="sw-icon">⚡</span>
+            <span id="sw-name-blindo" class="sw-name">Seleziona file CSV Blindo</span>
+            <input type="file" id="sw-file-blindo" accept=".csv,.txt,.tsv" style="display:none" onchange="swSetFile('blindo',this)">
+          </div>
+        </div>
+
+        <!-- Aria -->
+        <div class="sw-step">
+          <div class="sw-label">3. Aria Compressa <span style="color:#6b7280;font-weight:400;">(opzionale)</span></div>
+          <div class="sw-file-row" onclick="document.getElementById('sw-file-aria').click()">
+            <span class="sw-icon">💨</span>
+            <span id="sw-name-aria" class="sw-name">Seleziona file CSV Aria</span>
+            <input type="file" id="sw-file-aria" accept=".csv,.txt,.tsv" style="display:none" onchange="swSetFile('aria',this)">
+          </div>
+        </div>
+
+        <!-- Produzione -->
+        <div class="sw-step">
+          <div class="sw-label">4. Produzione <span style="color:#6b7280;font-weight:400;">(opzionale)</span></div>
+          <div class="sw-file-row" onclick="document.getElementById('sw-file-prod').click()">
+            <span class="sw-icon">🏗️</span>
+            <span id="sw-name-prod" class="sw-name">Seleziona file XLSX Produzione</span>
+            <input type="file" id="sw-file-prod" accept=".xlsx,.xls,.txt" style="display:none" onchange="swSetFile('prod',this)">
+          </div>
+        </div>
+
+        <!-- Presse (placeholder) -->
+        <div class="sw-step" style="opacity:.45;">
+          <div class="sw-label">5. Presse <span style="color:#6b7280;font-weight:400;">(prossimamente)</span></div>
+          <div class="sw-file-row" style="cursor:not-allowed;">
+            <span class="sw-icon">🔧</span>
+            <span class="sw-name">Non ancora disponibile</span>
+          </div>
+        </div>
+
+        <div id="sw-progress" style="display:none;margin-top:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;color:#166534;line-height:1.8;"></div>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button onclick="document.getElementById('modalSettimanale').style.display='none'"
+            style="flex:1;padding:11px;border:1.5px solid #e5e7eb;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;">
+            Annulla
+          </button>
+          <button onclick="eseguiAggiornamentoSettimanale()" id="sw-btn-ok"
+            style="flex:2;padding:11px;background:linear-gradient(135deg,#16a34a,#0d9488);color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;">
+            ▶ Avvia Aggiornamento
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // CSS inline per il modale
+    const style = document.createElement('style');
+    style.textContent = `.sw-step{margin-bottom:12px;} .sw-label{font-size:11px;font-weight:700;color:#374151;font-family:monospace;letter-spacing:.5px;margin-bottom:5px;} .sw-file-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border:1.5px dashed #d1d5db;border-radius:8px;cursor:pointer;transition:all .15s;background:#fafafa;} .sw-file-row:hover{border-color:#16a34a;background:#f0fdf4;} .sw-file-row.ok{border-color:#16a34a;border-style:solid;background:#f0fdf4;} .sw-icon{font-size:16px;flex-shrink:0;} .sw-name{font-size:12px;color:#6b7280;font-family:monospace;flex:1;}`;
+    document.head.appendChild(style);
+  }
+
+  // Reset stato
+  ['backup','blindo','aria','prod'].forEach(k => {
+    window['sw_file_'+k] = null;
+    const row = document.getElementById('sw-file-'+k)?.closest?.('.sw-file-row') || document.querySelector(`[onclick*="sw-file-${k}"]`);
+  });
+  document.getElementById('sw-progress').style.display = 'none';
+  modal.style.display = 'flex';
+}
+
+function swSetFile(tipo, input) {
+  const file = input.files[0];
+  if (!file) return;
+  window['sw_file_'+tipo] = file;
+  const nameEl = document.getElementById('sw-name-'+tipo);
+  if (nameEl) {
+    nameEl.textContent = '✓ ' + file.name;
+    nameEl.style.color = '#16a34a';
+  }
+}
+
+async function eseguiAggiornamentoSettimanale() {
+  const backupFile = window.sw_file_backup;
+  if (!backupFile) { alert('Seleziona almeno il file di backup!'); return; }
+
+  const btn = document.getElementById('sw-btn-ok');
+  const progress = document.getElementById('sw-progress');
+  btn.disabled = true;
+  btn.textContent = '⏳ Aggiornamento in corso...';
+  progress.style.display = 'block';
+
+  const log = (msg) => { progress.innerHTML += msg + '<br>'; };
+  progress.innerHTML = '';
+
+  try {
+    // STEP 1: Ripristina backup
+    log('📦 Ripristino backup...');
+    await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          // Usa la stessa logica di restoreBackup
+          if (data.version === 3 || data.blindo) {
+            if (data.blindo?.length) {
+              allData = data.blindo.map(r=>({key:r[0], dt:new Date(r[1]), v:new Float64Array(r[2])}));
+              allData.sort((a,b)=>a.dt-b.dt);
+              saveToStorage();
+            }
+            if (data.aria?.length) {
+              ariaData = data.aria.map(r => r.length===5
+                ? {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]}
+                : {key:r[0], dt:new Date(r[0]), portata:r[1]||0, pmax:0, pmedia:r[2]||0});
+              ariaData.sort((a,b)=>a.dt-b.dt);
+              saveAria();
+            }
+            if (data.bollette?.length) {
+              const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+              data.bollette.forEach(b=>{ if(!BOLLETTE.find(x=>x.m===b.m&&x.a===b.a)) BOLLETTE.push(b); });
+              BOLLETTE.sort((a,b)=>a.a!==b.a?a.a-b.a:MESI_IT.indexOf(a.m)-MESI_IT.indexOf(b.m));
+              localStorage.setItem('energyBollette', JSON.stringify(BOLLETTE));
+            }
+            if (data.produzione?.length) {
+              data.produzione.forEach(r => {
+                const ore = r.ore !== undefined ? r.ore : (r.ore_min||0)/60;
+                const entry = {a:r.a, m:r.m, kg:r.kg||0, ore, pezzi:r.pezzi||0, scarto:r.scarto||0, firstDay:r.firstDay||1, lastDay:r.lastDay||31};
+                const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
+                if (idx>=0) PROD_MENSILE[idx]=entry; else PROD_MENSILE.push(entry);
+              });
+              PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
+            }
+          }
+          log(`✅ Backup ripristinato — Blindo: ${allData.length.toLocaleString('it-IT')} ore, Aria: ${ariaData.length.toLocaleString('it-IT')} ore, Prod: ${PROD_MENSILE.length} mesi`);
+          resolve();
+        } catch(e) { reject(e); }
+      };
+      reader.readAsText(backupFile, 'UTF-8');
+    });
+
+    // STEP 2: Blindo
+    if (window.sw_file_blindo) {
+      log('⚡ Caricamento Blindo...');
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const before = allData.length;
+          parseTSV(ev.target.result, null);
+          log(`✅ Blindo: ${allData.length.toLocaleString('it-IT')} ore totali (+${allData.length-before})`);
+          resolve();
+        };
+        reader.readAsText(window.sw_file_blindo, 'windows-1252');
+      });
+    }
+
+    // STEP 3: Aria
+    if (window.sw_file_aria) {
+      log('💨 Caricamento Aria...');
+      await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const before = ariaData.length;
+          const pr = parseAriaTSV(ev.target.result);
+          const newRows = pr.rows.filter(r => !ariaData.find(x=>x.key===r.key));
+          ariaData = [...ariaData, ...newRows];
+          ariaData.sort((a,b)=>a.dt-b.dt);
+          saveAria();
+          log(`✅ Aria: ${ariaData.length.toLocaleString('it-IT')} ore totali (+${newRows.length})`);
+          resolve();
+        };
+        reader.readAsText(window.sw_file_aria, 'windows-1252');
+      });
+    }
+
+    // STEP 4: Produzione XLSX
+    if (window.sw_file_prod) {
+      log('🏗️ Caricamento Produzione...');
+      await new Promise((resolve, reject) => {
+        const loadAndParse = () => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+            try {
+              const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(ws, {raw:true, defval:''});
+              const pr = parseProdXlsx(rows);
+              pr.rows.forEach(r => {
+                const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
+                if (idx>=0) {
+                  PROD_MENSILE[idx].kg += r.kg; PROD_MENSILE[idx].ore += r.ore;
+                  PROD_MENSILE[idx].pezzi += r.pezzi; PROD_MENSILE[idx].scarto += r.scarto;
+                  if (r.lastDay > PROD_MENSILE[idx].lastDay) PROD_MENSILE[idx].lastDay = r.lastDay;
+                } else { PROD_MENSILE.push(r); }
+              });
+              PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
+              log(`✅ Produzione: ${PROD_MENSILE.length} mesi aggiornati`);
+              resolve();
+            } catch(e) { reject(e); }
+          };
+          reader.readAsArrayBuffer(window.sw_file_prod);
+        };
+
+        if (!window.XLSX) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          script.onload = loadAndParse;
+          script.onerror = () => { log('⚠ Errore caricamento libreria Excel'); resolve(); };
+          document.head.appendChild(script);
+        } else { loadAndParse(); }
+      });
+    }
+
+    // STEP 5: Salva nuovo backup automaticamente
+    log('💾 Salvataggio nuovo backup...');
+    exportData();
+    log('✅ Backup aggiornato scaricato automaticamente!');
+
+    // Aggiorna UI
+    if (allData.length) { updateStoragePill(); populateFilterSelectors(); computeTable(); }
+    if (ariaData.length) { updateAriaPill(); renderAriaMensile(); }
+    renderProduzione();
+    renderBollette();
+
+    log('<br>🎉 <b>Aggiornamento completato!</b>');
+    btn.textContent = '✅ Completato';
+    btn.style.background = '#16a34a';
+
+  } catch(e) {
+    log('❌ Errore: ' + e.message);
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = '▶ Avvia Aggiornamento';
+  }
+}
 loadAria();
 // produzione uses hardcoded PROD_MENSILE, no load needed
 try {
