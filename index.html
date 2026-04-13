@@ -296,6 +296,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .ds-pill.green{background:#dcfce7;color:#166534;border:1px solid #86efac;}
 .ds-placeholder{text-align:center;padding:40px 20px;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;}
 
+/* IA PAGE */
+.ia-cat-btn,.ia-tipo-btn{background:var(--surface);border:1.5px solid var(--border);color:var(--text-muted);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:var(--sans);}
+.ia-cat-btn:hover,.ia-tipo-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ia-cat-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ia-tipo-btn.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8;}
+.ia-msg-ai{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.8;}
+.ia-msg-ai ul{margin:8px 0 8px 20px;}
+.ia-msg-ai li{margin-bottom:4px;}
+.ia-msg-ai b{color:var(--accent-dark);}
+.ia-msg-user{background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:10px 14px;font-size:13px;align-self:flex-end;max-width:80%;}
+.ia-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
 /* GRAF TABS */
 .graf-tab{background:var(--surface);border:1.5px solid var(--border);color:var(--text-muted);padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:var(--sans);box-shadow:var(--shadow-sm);}
 .graf-tab:hover{border-color:var(--accent);color:var(--accent);}
@@ -1069,14 +1082,79 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <!-- ══ PAGE: CALCOLI IA ══ -->
   <div class="page" id="page-ia">
     <div class="page-header">
-      <h2>🤖 Calcoli IA</h2>
-      <p>Analisi intelligente dei dati energetici</p>
+      <h2>🤖 Analisi IA</h2>
+      <p>Analisi intelligente dei dati energetici e di produzione</p>
     </div>
-    <div class="card" style="padding:40px;text-align:center;">
-      <div style="font-size:48px;margin-bottom:16px;">🤖</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Sezione in costruzione</div>
-      <div style="font-size:13px;color:var(--text-muted);font-family:var(--mono);">Dimmi cosa vuoi analizzare e lo costruiamo insieme</div>
+
+    <!-- CONFIGURAZIONE -->
+    <div class="card" style="padding:20px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:14px;">⚙️ CONFIGURA ANALISI</div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">CATEGORIA DATI</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ia-cat-buttons">
+          <button class="ia-cat-btn active" data-val="tutto" onclick="iaCatSelect(this)">🏭 Tutto</button>
+          <button class="ia-cat-btn" data-val="energia" onclick="iaCatSelect(this)">⚡ Energia (Blindo)</button>
+          <button class="ia-cat-btn" data-val="aria" onclick="iaCatSelect(this)">💨 Aria Compressa</button>
+          <button class="ia-cat-btn" data-val="produzione" onclick="iaCatSelect(this)">🏗️ Produzione</button>
+          <button class="ia-cat-btn" data-val="bollette" onclick="iaCatSelect(this)">📄 Bollette</button>
+          <button class="ia-cat-btn" data-val="kpi" onclick="iaCatSelect(this)">📊 KPI Stabilimento</button>
+          <button class="ia-cat-btn" data-val="altro" onclick="iaCatSelect(this)">➕ Altro</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">TIPO DI ANALISI</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ia-tipo-buttons">
+          <button class="ia-tipo-btn active" data-val="anomalie" onclick="iaTipoSelect(this)">🔍 Anomalie</button>
+          <button class="ia-tipo-btn active" data-val="suggerimenti" onclick="iaTipoSelect(this)">💡 Suggerimenti</button>
+          <button class="ia-tipo-btn" data-val="trend" onclick="iaTipoSelect(this)">📈 Trend</button>
+          <button class="ia-tipo-btn" data-val="target" onclick="iaTipoSelect(this)">🎯 Confronto Target</button>
+          <button class="ia-tipo-btn" data-val="altro" onclick="iaTipoSelect(this)">➕ Altro</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:6px;font-family:var(--mono);">Puoi selezionare più tipi</div>
+      </div>
+
+      <button onclick="avviaAnalisiIA()" id="ia-btn-analizza"
+        style="background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        🤖 Avvia Analisi
+      </button>
     </div>
+
+    <!-- RISULTATI -->
+    <div id="ia-risultati" style="display:none;">
+      <!-- Analisi -->
+      <div class="card" style="padding:20px;margin-bottom:16px;" id="ia-analisi-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;">📋 RISULTATI ANALISI</div>
+          <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);" id="ia-timestamp"></div>
+        </div>
+        <div id="ia-output" style="font-size:13px;line-height:1.8;color:var(--text);"></div>
+      </div>
+
+      <!-- Chat -->
+      <div class="card" style="padding:20px;">
+        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:14px;">💬 FATTI UNA DOMANDA</div>
+        <div id="ia-chat-history" style="max-height:400px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;"></div>
+        <div style="display:flex;gap:10px;">
+          <input type="text" id="ia-domanda" placeholder="Es: Qual è il mese peggiore per l'energia? Come migliorare il KPI aria?"
+            style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--sans);outline:none;"
+            onkeydown="if(event.key==='Enter')inviaIaDomanda()">
+          <button onclick="inviaIaDomanda()" id="ia-btn-invia"
+            style="background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+            Invia ➤
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATO VUOTO -->
+    <div id="ia-empty" class="card" style="padding:40px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">🤖</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Pronto per analizzare</div>
+      <div style="font-size:13px;color:var(--text-muted);">Seleziona la categoria e il tipo di analisi, poi clicca <b>Avvia Analisi</b></div>
+    </div>
+
   </div><!-- /page-ia -->
 
 </main>
@@ -1194,6 +1272,7 @@ function restoreBackup(file) {
       renderBollette();
       renderProduzione();
       populateFilterSelectors();
+      if (allData.length>0) computeTable();
 
       alert(`✓ Backup ripristinato:\n• Blindo: ${blindoCount.toLocaleString('it-IT')} righe\n• Aria: ${ariaCount.toLocaleString('it-IT')} righe\n• Bollette: ${bolletteCount} mesi\n• Produzione: ${prodCount} mesi`);
     } catch(e) {
@@ -2256,28 +2335,56 @@ function addIssue(container,type,text){
 // ════════════════════════════════════════════════════
 function populateFilterSelectors() {
   const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-  const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
   const selMonth=document.getElementById('selMonth');
   const selYear=document.getElementById('selMonthYear');
 
-  // Build unique year+month pairs from BOLLETTE
-  const years=[...new Set(BOLLETTE.map(b=>b.a))].sort();
-  selYear.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  // Usa i mesi disponibili nei dati Blindo (più completi delle bollette)
+  const mesiDisponibili = new Set();
+  allData.forEach(r => {
+    const y=r.dt.getUTCFullYear(), m=r.dt.getUTCMonth();
+    mesiDisponibili.add(`${y}-${m}`);
+  });
 
-  // Populate months based on selected year
+  const years=[...new Set([...mesiDisponibili].map(k=>parseInt(k.split('-')[0])))].sort();
+  if (!years.length) {
+    // Fallback su bollette se non ci sono blindo
+    const byYears=[...new Set(BOLLETTE.map(b=>b.a))].sort();
+    selYear.innerHTML=byYears.map(y=>`<option value="${y}">${y}</option>`).join('');
+  } else {
+    selYear.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  }
+
   function updateMonths() {
     const y=parseInt(selYear.value);
-    const monthsForYear=BOLLETTE.filter(b=>b.a===y).map(b=>MESI_IT.indexOf(b.m));
-    selMonth.innerHTML=monthsForYear.sort((a,b)=>a-b).map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
+    // Mesi disponibili nei Blindo per quell'anno
+    const mesiAnno=[...new Set(
+      allData.filter(r=>r.dt.getUTCFullYear()===y).map(r=>r.dt.getUTCMonth())
+    )].sort((a,b)=>a-b);
+    if (mesiAnno.length) {
+      selMonth.innerHTML=mesiAnno.map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
+    } else {
+      // Fallback bollette
+      const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+      const mBoll=BOLLETTE.filter(b=>b.a===y).map(b=>MESI_IT.indexOf(b.m));
+      selMonth.innerHTML=mBoll.sort((a,b)=>a-b).map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
+    }
   }
   selYear.onchange=updateMonths;
   updateMonths();
 
-  // Default to latest bolletta month
-  const latest=BOLLETTE[BOLLETTE.length-1];
-  selYear.value=latest.a;
-  updateMonths();
-  selMonth.value=MESI_IT.indexOf(latest.m);
+  // Default all'ultimo mese disponibile nei Blindo
+  if (allData.length) {
+    const lastDt = allData[allData.length-1].dt;
+    selYear.value = lastDt.getUTCFullYear();
+    updateMonths();
+    selMonth.value = lastDt.getUTCMonth();
+  } else if (BOLLETTE.length) {
+    const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+    const latest=BOLLETTE[BOLLETTE.length-1];
+    selYear.value=latest.a;
+    updateMonths();
+    selMonth.value=MESI_IT.indexOf(latest.m);
+  }
 }
 
 function onFilterModeChange() {
@@ -3108,6 +3215,11 @@ function processProdRows(pr, mode, pw) {
   PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
   pw.style.display='none';
   renderProduzione();
+  // Aggiorna anche Dashboard e selettori se i dati Blindo sono presenti
+  if (allData.length) {
+    populateFilterSelectors();
+    computeTable();
+  }
   const dupMsg = pr.duplicati > 0 ? `\n⚠ ${pr.duplicati} righe duplicate rimosse (Pressa+Data+Commessa).` : '';
   alert(`✓ ${pr.rows.length} mesi caricati/aggiornati${pr.skipped>0?' ('+pr.skipped+' righe scartate)':''}${dupMsg}.`);
 }
@@ -3271,6 +3383,186 @@ document.querySelectorAll('.aria-nota').forEach(el => {
     if (tip) tip.style.display = 'none';
   });
 });
+// ════════════════════════════════════════════════════
+// PAGINA IA
+// ════════════════════════════════════════════════════
+
+let iaCategoria = 'tutto';
+let iaTipi = new Set(['anomalie','suggerimenti']);
+let iaContestoAnalisi = '';
+
+function iaCatSelect(btn) {
+  document.querySelectorAll('.ia-cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  iaCategoria = btn.dataset.val;
+}
+
+function iaTipoSelect(btn) {
+  btn.classList.toggle('active');
+  if (btn.classList.contains('active')) iaTipi.add(btn.dataset.val);
+  else iaTipi.delete(btn.dataset.val);
+}
+
+function buildIaContext() {
+  const lines = [];
+  const MESI_N = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+  if (PROD_MENSILE.length) {
+    lines.push('=== PRODUZIONE MENSILE ===');
+    PROD_MENSILE.forEach(r => {
+      const kgh = r.ore>0?(r.kg/r.ore).toFixed(1):'—';
+      const scartoP = r.pezzi>0?(r.scarto/r.pezzi*100).toFixed(2):'—';
+      lines.push(`${r.a}/${String(r.m).padStart(2,'0')}: kg=${Math.round(r.kg).toLocaleString('it-IT')} ore=${Math.round(r.ore)} kg/h=${kgh} scarto%=${scartoP}`);
+    });
+  }
+
+  if (allData.length) {
+    lines.push('\n=== KPI ENERGIA MENSILI ===');
+    const compByYear  = getMonthlyByYearMulti([C.compressori,C.salacompNH]);
+    const frigoByYear = getMonthlyByYearMulti([C.rs370,C.rs400,C.frigoRS330,C.frigoAtem]);
+    const pompByYear  = getMonthlyByYearMulti([C.pompe]);
+    const {kg:kgByYear} = getProdByYearMonth();
+    [...new Set(allData.map(r=>r.dt.getUTCFullYear()))].sort().forEach(y=>{
+      const comp=compByYear[y]||new Array(12).fill(0);
+      const frigo=frigoByYear[y]||new Array(12).fill(0);
+      const pomp=pompByYear[y]||new Array(12).fill(0);
+      const kg=kgByYear[y]||new Array(12).fill(0);
+      for(let m=0;m<12;m++){
+        if(comp[m]===0&&frigo[m]===0)continue;
+        const ipsAria=comp[m]>0&&kg[m]>0?(comp[m]/kg[m]).toFixed(3):'—';
+        const ipsFrigo=frigo[m]>0&&kg[m]>0?(frigo[m]/kg[m]).toFixed(3):'—';
+        lines.push(`${y}/${MESI_N[m]}: comp=${Math.round(comp[m]).toLocaleString('it-IT')}kWh frigo=${Math.round(frigo[m]).toLocaleString('it-IT')}kWh pomp=${Math.round(pomp[m]).toLocaleString('it-IT')}kWh IPS_aria=${ipsAria} IPS_frigo=${ipsFrigo}`);
+      }
+    });
+  }
+
+  if (ariaData.length) {
+    lines.push('\n=== ARIA COMPRESSA MENSILE ===');
+    const ariaByYear=getAriaNmcByYearMonth();
+    const compByYear=getMonthlyByYearMulti([C.compressori,C.salacompNH]);
+    Object.keys(ariaByYear).sort().forEach(y=>{
+      const nmc=ariaByYear[y]||new Array(12).fill(0);
+      const comp=compByYear[y]||new Array(12).fill(0);
+      for(let m=0;m<12;m++){
+        if(nmc[m]===0)continue;
+        const enpi=comp[m]>0&&nmc[m]>0?(comp[m]/nmc[m]).toFixed(4):'—';
+        lines.push(`${y}/${MESI_N[m]}: Nm3=${Math.round(nmc[m]).toLocaleString('it-IT')} EnPI=${enpi}kWh/Nm3`);
+      }
+    });
+  }
+
+  if (BOLLETTE.length) {
+    lines.push('\n=== BOLLETTE ===');
+    BOLLETTE.forEach(b=>lines.push(`${b.m} ${b.a}: Media=${Math.round(b.km).toLocaleString('it-IT')}kWh Bassa=${Math.round(b.kb).toLocaleString('it-IT')}kWh`));
+  }
+
+  lines.push('\n=== TARGET KPI ===');
+  lines.push('IPG Elettrico Stabilimento: target 2.590 kWh/kg');
+  lines.push('IPS Stampaggio: target 1.830 kWh/kg');
+  lines.push('IPS Acqua Fredda: target 0.178 kWh/kg');
+  lines.push('IPS Aria: target 0.259 kWh/kg');
+  lines.push('EnPI Aria: target 0.170 kWh/Nm³');
+
+  return lines.join('\n');
+}
+
+function buildIaPrompt(cat,tipi,dati) {
+  const tipiStr=[...tipi].join(', ');
+  const focusMap={tutto:'tutti i dati disponibili',energia:'consumi elettrici (Blindo)',aria:'aria compressa e compressori',produzione:'produzione (kg, ore, scarto)',bollette:'bollette elettriche',kpi:'KPI di stabilimento e target',altro:'analisi generale'};
+  return `Sei un esperto di energia e produzione industriale. Analizza i dati di un'azienda italiana di stampaggio materie plastiche.
+
+FOCUS: ${focusMap[cat]||cat}
+TIPO: ${tipiStr}
+
+DATI:
+${dati}
+
+Rispondi in italiano, formato lista sintetica:
+• Usa bullet (•) per ogni punto
+• ⚠ per anomalie con mese e valore specifico
+• ✅ per punti positivi
+• 💡 per suggerimenti con impatto atteso
+• Massimo 12 punti, concreti e specifici
+• Niente markdown con # o **`;
+}
+
+async function avviaAnalisiIA() {
+  if (!allData.length && !PROD_MENSILE.length && !ariaData.length) {
+    alert('Nessun dato caricato. Ripristina prima il backup.');
+    return;
+  }
+  if (iaTipi.size===0) { alert('Seleziona almeno un tipo di analisi.'); return; }
+
+  const btn=document.getElementById('ia-btn-analizza');
+  btn.innerHTML='<span class="ia-spinner"></span> Analisi in corso...';
+  btn.disabled=true;
+  document.getElementById('ia-empty').style.display='none';
+  document.getElementById('ia-risultati').style.display='block';
+  document.getElementById('ia-output').innerHTML='<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;">⏳ Analisi in corso...</div>';
+  document.getElementById('ia-chat-history').innerHTML='';
+
+  try {
+    iaContestoAnalisi = buildIaContext();
+    const prompt = buildIaPrompt(iaCategoria, iaTipi, iaContestoAnalisi);
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+    });
+    const json=await resp.json();
+    const testo=json.content?.[0]?.text||'Nessuna risposta.';
+    document.getElementById('ia-output').innerHTML=formatIaOutput(testo);
+    document.getElementById('ia-timestamp').textContent=new Date().toLocaleString('it-IT');
+  } catch(e) {
+    document.getElementById('ia-output').innerHTML=`<div style="color:#dc2626;">Errore: ${e.message}</div>`;
+  }
+  btn.innerHTML='🤖 Avvia Analisi'; btn.disabled=false;
+}
+
+async function inviaIaDomanda() {
+  const input=document.getElementById('ia-domanda');
+  const domanda=input.value.trim();
+  if (!domanda) return;
+  const btn=document.getElementById('ia-btn-invia');
+  btn.disabled=true; btn.textContent='...'; input.value='';
+  const history=document.getElementById('ia-chat-history');
+
+  const msgU=document.createElement('div'); msgU.className='ia-msg-user'; msgU.textContent=domanda; history.appendChild(msgU);
+  const msgA=document.createElement('div'); msgA.className='ia-msg-ai'; msgA.innerHTML='<span style="color:var(--text-muted);font-size:12px;">⏳ elaborando...</span>'; history.appendChild(msgA);
+  history.scrollTop=history.scrollHeight;
+
+  try {
+    const analisiPrec=document.getElementById('ia-output').innerText;
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:800,
+        system:`Sei un esperto di energia e produzione industriale. Hai analizzato i dati di questa azienda italiana di stampaggio plastica.\n\nDATI:\n${iaContestoAnalisi}\n\nANALISI PRECEDENTE:\n${analisiPrec}\n\nRispondi in italiano, sintetico e specifico con numeri quando possibile.`,
+        messages:[{role:'user',content:domanda}]
+      })
+    });
+    const json=await resp.json();
+    msgA.innerHTML=formatIaOutput(json.content?.[0]?.text||'Nessuna risposta.');
+  } catch(e) {
+    msgA.innerHTML=`<span style="color:#dc2626;">Errore: ${e.message}</span>`;
+  }
+  history.scrollTop=history.scrollHeight;
+  btn.disabled=false; btn.textContent='Invia ➤'; input.focus();
+}
+
+function formatIaOutput(testo) {
+  return testo.split('\n').map(line=>{
+    line=line.trim(); if(!line) return '<br>';
+    if(line.startsWith('•')||line.startsWith('-'))
+      return `<div style="display:flex;gap:8px;margin:5px 0;"><span style="flex-shrink:0;margin-top:1px;">${line.charAt(0)}</span><span>${line.slice(1).trim()}</span></div>`;
+    if(line.match(/^[⚠✅💡📊🔍📈🎯]/))
+      return `<div style="margin:12px 0 4px;font-weight:700;font-size:14px;">${line}</div>`;
+    return `<div style="margin:2px 0;">${line}</div>`;
+  }).join('');
+}
+
 // ════════════════════════════════════════════════════
 loadFromStorage();
 loadAria();
