@@ -1085,18 +1085,26 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <div class="page" id="page-ia">
     <div class="page-header">
       <h2>🤖 Analisi IA</h2>
-      <p>Analisi intelligente dei dati energetici e di produzione</p>
+      <p>Genera il prompt con i tuoi dati e incollalo su Claude.ai</p>
     </div>
 
-    <!-- CONFIGURAZIONE -->
+    <div class="card" style="padding:16px 20px;margin-bottom:16px;background:#eff6ff;border-color:#93c5fd;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="font-size:24px;flex-shrink:0;">💡</div>
+        <div style="font-size:13px;color:#1e40af;line-height:1.7;">
+          <b>Come funziona:</b> configura l'analisi e clicca <b>Genera Prompt</b>. Il sistema prepara un testo con tutti i tuoi dati. Copialo e incollalo su <b>claude.ai</b> — l'IA risponderà direttamente.
+        </div>
+      </div>
+    </div>
+
     <div class="card" style="padding:20px;margin-bottom:16px;">
       <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:14px;">⚙️ CONFIGURA ANALISI</div>
 
       <div style="margin-bottom:14px;">
         <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">CATEGORIA DATI</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ia-cat-buttons">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button class="ia-cat-btn active" data-val="tutto" onclick="iaCatSelect(this)">🏭 Tutto</button>
-          <button class="ia-cat-btn" data-val="energia" onclick="iaCatSelect(this)">⚡ Energia (Blindo)</button>
+          <button class="ia-cat-btn" data-val="energia" onclick="iaCatSelect(this)">⚡ Energia</button>
           <button class="ia-cat-btn" data-val="aria" onclick="iaCatSelect(this)">💨 Aria Compressa</button>
           <button class="ia-cat-btn" data-val="produzione" onclick="iaCatSelect(this)">🏗️ Produzione</button>
           <button class="ia-cat-btn" data-val="bollette" onclick="iaCatSelect(this)">📄 Bollette</button>
@@ -1105,56 +1113,56 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
         </div>
       </div>
 
-      <div style="margin-bottom:16px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">TIPO DI ANALISI</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="ia-tipo-buttons">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">TIPO DI ANALISI <span style="font-weight:400;">(multipla)</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button class="ia-tipo-btn active" data-val="anomalie" onclick="iaTipoSelect(this)">🔍 Anomalie</button>
           <button class="ia-tipo-btn active" data-val="suggerimenti" onclick="iaTipoSelect(this)">💡 Suggerimenti</button>
           <button class="ia-tipo-btn" data-val="trend" onclick="iaTipoSelect(this)">📈 Trend</button>
           <button class="ia-tipo-btn" data-val="target" onclick="iaTipoSelect(this)">🎯 Confronto Target</button>
           <button class="ia-tipo-btn" data-val="altro" onclick="iaTipoSelect(this)">➕ Altro</button>
         </div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:6px;font-family:var(--mono);">Puoi selezionare più tipi</div>
       </div>
 
-      <button onclick="avviaAnalisiIA()" id="ia-btn-analizza"
-        style="background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
-        🤖 Avvia Analisi
+      <div style="margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">DOMANDA SPECIFICA <span style="font-weight:400;">(opzionale)</span></div>
+        <input type="text" id="ia-domanda-extra" placeholder="Es: Perché il KPI aria di settembre 2023 è anomalo?"
+          style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--sans);outline:none;box-sizing:border-box;">
+      </div>
+
+      <button onclick="generaPromptIA()"
+        style="background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+        ✨ Genera Prompt
       </button>
     </div>
 
-    <!-- RISULTATI -->
     <div id="ia-risultati" style="display:none;">
-      <!-- Analisi -->
-      <div class="card" style="padding:20px;margin-bottom:16px;" id="ia-analisi-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;">📋 RISULTATI ANALISI</div>
-          <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);" id="ia-timestamp"></div>
-        </div>
-        <div id="ia-output" style="font-size:13px;line-height:1.8;color:var(--text);"></div>
-      </div>
-
-      <!-- Chat -->
       <div class="card" style="padding:20px;">
-        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:14px;">💬 FATTI UNA DOMANDA</div>
-        <div id="ia-chat-history" style="max-height:400px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;"></div>
-        <div style="display:flex;gap:10px;">
-          <input type="text" id="ia-domanda" placeholder="Es: Qual è il mese peggiore per l'energia? Come migliorare il KPI aria?"
-            style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:var(--sans);outline:none;"
-            onkeydown="if(event.key==='Enter')inviaIaDomanda()">
-          <button onclick="inviaIaDomanda()" id="ia-btn-invia"
-            style="background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
-            Invia ➤
-          </button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;">📋 PROMPT PRONTO — Copia e incolla su Claude.ai</div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="copiaPromptIA()" id="ia-btn-copia"
+              style="background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+              📋 Copia tutto
+            </button>
+            <a href="https://claude.ai" target="_blank"
+              style="background:#2563eb;color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;">
+              🔗 Apri Claude.ai
+            </a>
+          </div>
+        </div>
+        <textarea id="ia-prompt-box" readonly
+          style="width:100%;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:monospace;font-size:11px;line-height:1.7;height:380px;resize:vertical;color:var(--text);box-sizing:border-box;"></textarea>
+        <div style="margin-top:10px;padding:10px 14px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;">
+          ✅ <b>1.</b> Clicca "Copia tutto" &nbsp;·&nbsp; <b>2.</b> Apri Claude.ai &nbsp;·&nbsp; <b>3.</b> Incolla e invia
         </div>
       </div>
     </div>
 
-    <!-- STATO VUOTO -->
     <div id="ia-empty" class="card" style="padding:40px;text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">🤖</div>
       <div style="font-size:15px;font-weight:700;margin-bottom:6px;">Pronto per analizzare</div>
-      <div style="font-size:13px;color:var(--text-muted);">Seleziona la categoria e il tipo di analisi, poi clicca <b>Avvia Analisi</b></div>
+      <div style="font-size:13px;color:var(--text-muted);">Seleziona categoria e tipo, poi clicca <b>Genera Prompt</b></div>
     </div>
 
   </div><!-- /page-ia -->
@@ -3457,7 +3465,7 @@ function buildIaContext() {
     PROD_MENSILE.forEach(r => {
       const kgh = r.ore>0?(r.kg/r.ore).toFixed(1):'—';
       const scartoP = r.pezzi>0?(r.scarto/r.pezzi*100).toFixed(2):'—';
-      lines.push(`${r.a}/${String(r.m).padStart(2,'0')}: kg=${Math.round(r.kg).toLocaleString('it-IT')} ore=${Math.round(r.ore)} kg/h=${kgh} scarto%=${scartoP}`);
+      lines.push(`\${r.a}/\${String(r.m).padStart(2,'0')}: kg=\${Math.round(r.kg).toLocaleString('it-IT')} ore=\${Math.round(r.ore)} kg/h=\${kgh} scarto%=\${scartoP}`);
     });
   }
 
@@ -3476,7 +3484,7 @@ function buildIaContext() {
         if(comp[m]===0&&frigo[m]===0)continue;
         const ipsAria=comp[m]>0&&kg[m]>0?(comp[m]/kg[m]).toFixed(3):'—';
         const ipsFrigo=frigo[m]>0&&kg[m]>0?(frigo[m]/kg[m]).toFixed(3):'—';
-        lines.push(`${y}/${MESI_N[m]}: comp=${Math.round(comp[m]).toLocaleString('it-IT')}kWh frigo=${Math.round(frigo[m]).toLocaleString('it-IT')}kWh pomp=${Math.round(pomp[m]).toLocaleString('it-IT')}kWh IPS_aria=${ipsAria} IPS_frigo=${ipsFrigo}`);
+        lines.push(`\${y}/\${MESI_N[m]}: comp=\${Math.round(comp[m]).toLocaleString('it-IT')}kWh frigo=\${Math.round(frigo[m]).toLocaleString('it-IT')}kWh pomp=\${Math.round(pomp[m]).toLocaleString('it-IT')}kWh IPS_aria=\${ipsAria} IPS_frigo=\${ipsFrigo}`);
       }
     });
   }
@@ -3491,14 +3499,14 @@ function buildIaContext() {
       for(let m=0;m<12;m++){
         if(nmc[m]===0)continue;
         const enpi=comp[m]>0&&nmc[m]>0?(comp[m]/nmc[m]).toFixed(4):'—';
-        lines.push(`${y}/${MESI_N[m]}: Nm3=${Math.round(nmc[m]).toLocaleString('it-IT')} EnPI=${enpi}kWh/Nm3`);
+        lines.push(`\${y}/\${MESI_N[m]}: Nm3=\${Math.round(nmc[m]).toLocaleString('it-IT')} EnPI=\${enpi}kWh/Nm3`);
       }
     });
   }
 
   if (BOLLETTE.length) {
     lines.push('\n=== BOLLETTE ===');
-    BOLLETTE.forEach(b=>lines.push(`${b.m} ${b.a}: Media=${Math.round(b.km).toLocaleString('it-IT')}kWh Bassa=${Math.round(b.kb).toLocaleString('it-IT')}kWh`));
+    BOLLETTE.forEach(b=>lines.push(`\${b.m} \${b.a}: Media=\${Math.round(b.km).toLocaleString('it-IT')}kWh Bassa=\${Math.round(b.kb).toLocaleString('it-IT')}kWh`));
   }
 
   lines.push('\n=== TARGET KPI ===');
@@ -3506,106 +3514,70 @@ function buildIaContext() {
   lines.push('IPS Stampaggio: target 1.830 kWh/kg');
   lines.push('IPS Acqua Fredda: target 0.178 kWh/kg');
   lines.push('IPS Aria: target 0.259 kWh/kg');
-  lines.push('EnPI Aria: target 0.170 kWh/Nm³');
+  lines.push('EnPI Aria: target 0.170 kWh/Nm3');
 
   return lines.join('\n');
 }
 
-function buildIaPrompt(cat,tipi,dati) {
-  const tipiStr=[...tipi].join(', ');
-  const focusMap={tutto:'tutti i dati disponibili',energia:'consumi elettrici (Blindo)',aria:'aria compressa e compressori',produzione:'produzione (kg, ore, scarto)',bollette:'bollette elettriche',kpi:'KPI di stabilimento e target',altro:'analisi generale'};
-  return `Sei un esperto di energia e produzione industriale. Analizza i dati di un'azienda italiana di stampaggio materie plastiche.
-
-FOCUS: ${focusMap[cat]||cat}
-TIPO: ${tipiStr}
-
-DATI:
-${dati}
-
-Rispondi in italiano, formato lista sintetica:
-• Usa bullet (•) per ogni punto
-• ⚠ per anomalie con mese e valore specifico
-• ✅ per punti positivi
-• 💡 per suggerimenti con impatto atteso
-• Massimo 12 punti, concreti e specifici
-• Niente markdown con # o **`;
-}
-
-async function avviaAnalisiIA() {
+function generaPromptIA() {
   if (!allData.length && !PROD_MENSILE.length && !ariaData.length) {
     alert('Nessun dato caricato. Ripristina prima il backup.');
     return;
   }
-  if (iaTipi.size===0) { alert('Seleziona almeno un tipo di analisi.'); return; }
+  if (iaTipi.size === 0) { alert('Seleziona almeno un tipo di analisi.'); return; }
 
-  const btn=document.getElementById('ia-btn-analizza');
-  btn.innerHTML='<span class="ia-spinner"></span> Analisi in corso...';
-  btn.disabled=true;
-  document.getElementById('ia-empty').style.display='none';
-  document.getElementById('ia-risultati').style.display='block';
-  document.getElementById('ia-output').innerHTML='<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;">⏳ Analisi in corso...</div>';
-  document.getElementById('ia-chat-history').innerHTML='';
+  const dati = buildIaContext();
+  const tipiStr = [...iaTipi].join(', ');
+  const focusMap = {
+    tutto:'tutti i dati (energia, aria, produzione, bollette, KPI)',
+    energia:'consumi elettrici (Blindo)',
+    aria:'aria compressa e compressori',
+    produzione:'produzione (kg, ore, scarto)',
+    bollette:'bollette elettriche',
+    kpi:'KPI di stabilimento e confronto con target',
+    altro:'analisi generale'
+  };
+  const focus = focusMap[iaCategoria] || iaCategoria;
+  const domandaExtra = document.getElementById('ia-domanda-extra')?.value?.trim() || '';
 
-  try {
-    iaContestoAnalisi = buildIaContext();
-    const prompt = buildIaPrompt(iaCategoria, iaTipi, iaContestoAnalisi);
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})
-    });
-    const json=await resp.json();
-    const testo=json.content?.[0]?.text||'Nessuna risposta.';
-    document.getElementById('ia-output').innerHTML=formatIaOutput(testo);
-    document.getElementById('ia-timestamp').textContent=new Date().toLocaleString('it-IT');
-  } catch(e) {
-    document.getElementById('ia-output').innerHTML=`<div style="color:#dc2626;">Errore: ${e.message}</div>`;
+  let prompt = `Sei un esperto di energia e produzione industriale. Analizza i seguenti dati di un'azienda italiana di stampaggio materie plastiche.
+
+FOCUS ANALISI: \${focus}
+TIPO: \${tipiStr}
+
+\${dati}
+
+Fornisci un'analisi in italiano, sintetica e pratica:
+• Usa bullet point (•) per ogni punto
+• ⚠ per anomalie con mese e valore specifico
+• ✅ per punti positivi o miglioramenti raggiunti
+• 💡 per suggerimenti concreti con impatto atteso
+• Massimo 12 punti, specifici e basati sui dati
+• Evita frasi generiche — cita sempre mesi e valori`;
+
+  if (domandaExtra) {
+    prompt += `\n\nDOMANDA SPECIFICA: \${domandaExtra}`;
   }
-  btn.innerHTML='🤖 Avvia Analisi'; btn.disabled=false;
+
+  document.getElementById('ia-prompt-box').value = prompt;
+  document.getElementById('ia-risultati').style.display = 'block';
+  document.getElementById('ia-empty').style.display = 'none';
+  document.getElementById('ia-risultati').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-async function inviaIaDomanda() {
-  const input=document.getElementById('ia-domanda');
-  const domanda=input.value.trim();
-  if (!domanda) return;
-  const btn=document.getElementById('ia-btn-invia');
-  btn.disabled=true; btn.textContent='...'; input.value='';
-  const history=document.getElementById('ia-chat-history');
-
-  const msgU=document.createElement('div'); msgU.className='ia-msg-user'; msgU.textContent=domanda; history.appendChild(msgU);
-  const msgA=document.createElement('div'); msgA.className='ia-msg-ai'; msgA.innerHTML='<span style="color:var(--text-muted);font-size:12px;">⏳ elaborando...</span>'; history.appendChild(msgA);
-  history.scrollTop=history.scrollHeight;
-
-  try {
-    const analisiPrec=document.getElementById('ia-output').innerText;
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:800,
-        system:`Sei un esperto di energia e produzione industriale. Hai analizzato i dati di questa azienda italiana di stampaggio plastica.\n\nDATI:\n${iaContestoAnalisi}\n\nANALISI PRECEDENTE:\n${analisiPrec}\n\nRispondi in italiano, sintetico e specifico con numeri quando possibile.`,
-        messages:[{role:'user',content:domanda}]
-      })
-    });
-    const json=await resp.json();
-    msgA.innerHTML=formatIaOutput(json.content?.[0]?.text||'Nessuna risposta.');
-  } catch(e) {
-    msgA.innerHTML=`<span style="color:#dc2626;">Errore: ${e.message}</span>`;
-  }
-  history.scrollTop=history.scrollHeight;
-  btn.disabled=false; btn.textContent='Invia ➤'; input.focus();
-}
-
-function formatIaOutput(testo) {
-  return testo.split('\n').map(line=>{
-    line=line.trim(); if(!line) return '<br>';
-    if(line.startsWith('•')||line.startsWith('-'))
-      return `<div style="display:flex;gap:8px;margin:5px 0;"><span style="flex-shrink:0;margin-top:1px;">${line.charAt(0)}</span><span>${line.slice(1).trim()}</span></div>`;
-    if(line.match(/^[⚠✅💡📊🔍📈🎯]/))
-      return `<div style="margin:12px 0 4px;font-weight:700;font-size:14px;">${line}</div>`;
-    return `<div style="margin:2px 0;">${line}</div>`;
-  }).join('');
+function copiaPromptIA() {
+  const box = document.getElementById('ia-prompt-box');
+  box.select();
+  navigator.clipboard.writeText(box.value).then(() => {
+    const btn = document.getElementById('ia-btn-copia');
+    btn.textContent = '✅ Copiato!';
+    btn.style.background = '#059669';
+    setTimeout(() => { btn.textContent = '📋 Copia tutto'; btn.style.background = 'var(--accent)'; }, 2000);
+  }).catch(() => {
+    // Fallback
+    document.execCommand('copy');
+    alert('Copiato!');
+  });
 }
 
 // ════════════════════════════════════════════════════
