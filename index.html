@@ -3223,20 +3223,42 @@ function parseProdXlsx(rows) {
 function processProdRows(pr, mode, pw) {
   if (!pr.rows.length) { pw.style.display='none'; alert('⚠ Nessuna riga valida trovata.'); return; }
 
+  console.log('[processProd] modalità:', mode, '| mesi da inserire:', pr.rows.length);
+  pr.rows.forEach(r => console.log(`  → ${r.a}/${r.m}: kg=${r.kg.toFixed(0)} ore=${r.ore.toFixed(1)} giorni=${r.firstDay}-${r.lastDay}`));
+
   if (mode === 'replace') {
     pr.rows.forEach(r => {
       const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
-      if (idx>=0) PROD_MENSILE[idx]=r; else PROD_MENSILE.push(r);
+      if (idx>=0) {
+        console.log(`[processProd] SOSTITUISCE ${r.a}/${r.m}: kg ${PROD_MENSILE[idx].kg.toFixed(0)}→${r.kg.toFixed(0)}`);
+        PROD_MENSILE[idx]=r;
+      } else {
+        console.log(`[processProd] AGGIUNGE ${r.a}/${r.m}`);
+        PROD_MENSILE.push(r);
+      }
     });
-  } else {
+  } else { // add
     pr.rows.forEach(r => {
-      if (!PROD_MENSILE.find(x=>x.a===r.a&&x.m===r.m)) PROD_MENSILE.push(r);
+      const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
+      if (idx>=0) {
+        // Aggiorna il mese esistente sommando i nuovi giorni
+        console.log(`[processProd] AGGIORNA ${r.a}/${r.m}: kg ${PROD_MENSILE[idx].kg.toFixed(0)}→${(PROD_MENSILE[idx].kg+r.kg).toFixed(0)}`);
+        PROD_MENSILE[idx].kg     += r.kg;
+        PROD_MENSILE[idx].ore    += r.ore;
+        PROD_MENSILE[idx].pezzi  += r.pezzi;
+        PROD_MENSILE[idx].scarto += r.scarto;
+        if (r.lastDay  > PROD_MENSILE[idx].lastDay)  PROD_MENSILE[idx].lastDay  = r.lastDay;
+        if (r.firstDay < PROD_MENSILE[idx].firstDay) PROD_MENSILE[idx].firstDay = r.firstDay;
+      } else {
+        console.log(`[processProd] AGGIUNGE NUOVO ${r.a}/${r.m}`);
+        PROD_MENSILE.push(r);
+      }
     });
   }
+
   PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
   pw.style.display='none';
   renderProduzione();
-  // Aggiorna anche Dashboard e selettori se i dati Blindo sono presenti
   if (allData.length) {
     populateFilterSelectors();
     computeTable();
