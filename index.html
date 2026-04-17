@@ -1910,6 +1910,18 @@ function computePeriodData(rows, fromM, fromY, toM, toY) {
   const altro = bollFound ? bollKwh - tfTotal : 0;
   const grandTotal = bollFound ? bollKwh : tfTotal;
 
+  // Produzione del periodo
+  let prodKg=0, prodOre=0;
+  for (let y=fromY; y<=toY; y++) {
+    const mStart = (y===fromY) ? fromM : 0;
+    const mEnd   = (y===toY)   ? toM   : 11;
+    for (let m=mStart; m<=mEnd; m++) {
+      const p = PROD_MENSILE.find(r=>r.a===y&&r.m===m+1);
+      if (p) { prodKg+=p.kg; prodOre+=p.ore; }
+    }
+  }
+  const prodKgH = prodOre>0 ? prodKg/prodOre : 0;
+
   return [
     {label:'Stampaggio LOTTO A',           val:lottoA,    group:'princ'},
     {label:'Stampaggio LOTTO B',           val:lottoB,    group:'princ'},
@@ -1929,6 +1941,7 @@ function computePeriodData(rows, fromM, fromY, toM, toY) {
     {label:'Subtotale Servizi Generali',   val:subGen,    sub:true},
     {label:'Altro (Bolletta−Misurato)',    val:altro,     group:'altro'},
     {label:'TOTALE (da Bolletta)',         val:grandTotal,total:true},
+    {label:'__prod__', prodKg, prodOre, prodKgH},
   ];
 }
 
@@ -1977,8 +1990,12 @@ function computeConfronto() {
     </tr>`;
 
   let html='';
-  dA.forEach((rA,i)=>{
-    const rB=dB[i];
+  const prodA = dA.find(r=>r.label==='__prod__');
+  const prodB = dB.find(r=>r.label==='__prod__');
+  const rows  = dA.filter(r=>r.label!=='__prod__');
+
+  rows.forEach((rA,i)=>{
+    const rB=dB.filter(r=>r.label!=='__prod__')[i];
     const delta=rB.val-rA.val;
     const pct=rA.val!==0?(delta/rA.val*100):0;
     const dot=rA.group?`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GCOL[rA.group]||'#999'};margin-right:6px;"></span>`:'';
@@ -2011,6 +2028,70 @@ function computeConfronto() {
     }
   });
   document.getElementById('confrontoBody').innerHTML=html;
+
+  // Tabella produzione separata
+  if (prodA && prodB) {
+    const fmtKg  = v => v>0 ? Math.round(v).toLocaleString('it-IT')+' kg' : '—';
+    const fmtOre = v => v>0 ? Math.floor(v).toLocaleString('it-IT')+' h' : '—';
+    const fmtKgH = v => v>0 ? v.toFixed(2)+' kg/h' : '—';
+    const deltaKg  = prodB.prodKg  - prodA.prodKg;
+    const deltaOre = prodB.prodOre - prodA.prodOre;
+    const deltaKgH = prodB.prodKgH - prodA.prodKgH;
+    const pctKg    = prodA.prodKg >0 ? deltaKg /prodA.prodKg *100 : 0;
+    const pctOre   = prodA.prodOre>0 ? deltaOre/prodA.prodOre*100 : 0;
+    const pctKgH   = prodA.prodKgH>0 ? deltaKgH/prodA.prodKgH*100 : 0;
+    const fmtD = (v,unit) => `<span style="color:${v>=0?'#dc2626':'#16a34a'};font-weight:700;">${v>=0?'+':''}${unit==='kg'?Math.round(v).toLocaleString('it-IT'):unit==='h'?Math.floor(v).toLocaleString('it-IT'):v.toFixed(2)} ${unit}</span>`;
+    const fmtP = v => `<span style="color:${v>=0?'#dc2626':'#16a34a'};font-weight:700;">${v>=0?'+':''}${v.toFixed(1)}%</span>`;
+
+    let prodHtml = `
+      <div style="margin-top:16px;font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:6px;">🏗️ PRODUZIONE</div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+        <thead>
+          <tr style="background:#1b4d1b;color:#fff;font-size:11px;">
+            <th style="padding:9px 14px;text-align:left;">INDICATORE</th>
+            <th style="padding:9px 14px;text-align:right;background:rgba(217,119,6,.25);">A — ${lblA}</th>
+            <th style="padding:9px 14px;text-align:right;background:rgba(37,99,235,.25);">B — ${lblB}</th>
+            <th style="padding:9px 14px;text-align:right;">Δ</th>
+            <th style="padding:9px 14px;text-align:right;">Δ %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:#fff;border-bottom:1px solid var(--surface2);">
+            <td style="padding:7px 14px;">Kg Prodotti</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(217,119,6,.05);">${fmtKg(prodA.prodKg)}</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(37,99,235,.05);">${fmtKg(prodB.prodKg)}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtD(deltaKg,'kg')}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtP(pctKg)}</td>
+          </tr>
+          <tr style="background:#fafafa;border-bottom:1px solid var(--surface2);">
+            <td style="padding:7px 14px;">Ore Lavorate</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(217,119,6,.05);">${fmtOre(prodA.prodOre)}</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(37,99,235,.05);">${fmtOre(prodB.prodOre)}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtD(deltaOre,'h')}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtP(pctOre)}</td>
+          </tr>
+          <tr style="background:#fff;border-bottom:1px solid var(--surface2);">
+            <td style="padding:7px 14px;">Kg/Ora</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(217,119,6,.05);">${fmtKgH(prodA.prodKgH)}</td>
+            <td style="padding:7px 14px;text-align:right;background:rgba(37,99,235,.05);">${fmtKgH(prodB.prodKgH)}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtD(deltaKgH,'kg/h')}</td>
+            <td style="padding:7px 14px;text-align:right;">${fmtP(pctKgH)}</td>
+          </tr>
+        </tbody>
+      </table></div>`;
+
+    // Inserisci dopo la tabella energia
+    const confrontoDiv = document.getElementById('confrontoContent');
+    let prodDiv = document.getElementById('confrontoProduzione');
+    if (!prodDiv) {
+      prodDiv = document.createElement('div');
+      prodDiv.id = 'confrontoProduzione';
+      confrontoDiv.insertBefore(prodDiv, confrontoDiv.firstChild);
+    }
+    prodDiv.innerHTML = prodHtml;
+    prodDiv.style.display = 'block';
+  }
   document.getElementById('emptyConfronto').style.display='none';
   document.getElementById('confrontoContent').style.display='block';
 
