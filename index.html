@@ -1736,9 +1736,10 @@ function renderKpiChart(canvasId, emptyId, legendId, numByYear, denByYear, yLabe
   canvas._maxVal=maxVal; canvas._pad=PAD; canvas._cW=cW; canvas._cH=cH;
   canvas._xStep=xStep; canvas._decimals=decimals; canvas._yLabel=yLabel;
   canvas._denByYear=denByYear; canvas._maxDen=maxDen; canvas._target=target;
-  canvas.onmousemove=kpiTooltip;
-  canvas.onmouseleave=()=>{
+  canvas.onmousemove = (e) => { kpiTooltip(e); kpiMagnifier(e); };
+  canvas.onmouseleave = () => {
     const t=document.getElementById('graficoTooltip'); if(t)t.style.display='none';
+    const m=document.getElementById('kpiLens'); if(m)m.style.display='none';
   };
 }
 
@@ -1793,24 +1794,27 @@ function kpiTooltip(e) {
   const mi=Math.round((mx-PAD.left)/_xStep);
   if(mi<0||mi>11)return;
 
-  // Anni visibili
   const hiddenYears = canvas._hiddenYears || new Set();
   const visibleYears = _years.filter(y => !hiddenYears.has(y));
 
   let tip=document.getElementById('graficoTooltip');
   if(!tip){
     tip=document.createElement('div'); tip.id='graficoTooltip';
-    tip.style.cssText='position:fixed;background:#1f2937;color:#fff;padding:10px 14px;border-radius:10px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:2;max-width:340px;box-shadow:0 4px 20px rgba(0,0,0,.4);';
+    tip.style.cssText='position:fixed;background:#1f2937;color:#fff;padding:10px 16px;border-radius:10px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:2;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,.4);';
     document.body.appendChild(tip);
   }
 
   const prezzoMedio = getPrezzoMedio();
   const denUnit = _yLabel.includes('Nm³')?'Nm³':_yLabel.includes('kg')?'kg':'h';
+  const targetEurKg = (_target && prezzoMedio) ? (_target * prezzoMedio).toFixed(3) : null;
 
-  // Header con prezzo medio
-  let html=`<div style="font-weight:700;margin-bottom:2px;font-size:13px;border-bottom:1px solid #374151;padding-bottom:4px;">
+  // Header
+  let targetStr = _target
+    ? ` <span style="color:#fca5a5;">| target: ${_target} ${_yLabel} → ${targetEurKg} €/${denUnit}</span>`
+    : '';
+  let html=`<div style="font-weight:700;margin-bottom:4px;font-size:12px;border-bottom:1px solid #374151;padding-bottom:4px;white-space:nowrap;">
     ${MESI_SHORT[mi]}
-    <span style="font-size:10px;color:#94a3b8;font-weight:400;"> (prezzo medio usato: ${prezzoMedio.toFixed(4)} €/kWh)</span>
+    <span style="font-size:10px;color:#94a3b8;font-weight:400;"> (prezzo medio usato: ${prezzoMedio.toFixed(4)} €/kWh${targetStr})</span>
   </div>`;
 
   let hasData = false;
@@ -1822,14 +1826,20 @@ function kpiTooltip(e) {
     const den=(_denByYear&&_denByYear[y]?_denByYear[y][mi]:0)||0;
     const col=YEAR_COLORS[i%YEAR_COLORS.length];
 
-    // Calcola kWh totali e € del mese
     const prezzoMese = getPrezzoMese(y, mi);
-    // num = val * den (kWh totali = KPI × denominatore)
     const kwhTot = den > 0 ? val * den : 0;
     const eurTot = kwhTot * prezzoMese;
+    const eurKg  = den > 0 ? eurTot / den : 0;
 
-    const denStr = den>0 ? `<span style="color:#94a3b8;font-size:10px;"> (${den.toLocaleString('it-IT',{maximumFractionDigits:0})} ${denUnit})</span>` : '';
-    const eurStr = eurTot>0 ? `<span style="color:#fbbf24;"> → ${eurTot.toLocaleString('it-IT',{maximumFractionDigits:0})} €</span>` : '';
+    const denStr = den>0
+      ? `<span style="color:#94a3b8;"> (${den.toLocaleString('it-IT',{maximumFractionDigits:0})} ${denUnit})</span>`
+      : '';
+    const eurStr = eurTot>0
+      ? `<span style="color:#fbbf24;"> → ${eurTot.toLocaleString('it-IT',{maximumFractionDigits:0})} €</span>`
+      : '';
+    const eurKgStr = eurKg>0
+      ? `<span style="color:#a78bfa;"> → ${eurKg.toFixed(3)} €/${denUnit}</span>`
+      : '';
 
     // Delta vs target
     let deltaStr = '';
@@ -1841,18 +1851,18 @@ function kpiTooltip(e) {
         const sign = delta > 0 ? '▲' : '▼';
         const col2 = delta > 0 ? '#f87171' : '#4ade80';
         const label = delta > 0 ? 'extra' : 'risparmio';
-        deltaStr = `<span style="color:${col2};font-size:10px;"> ${sign} ${Math.abs(deltaEur).toLocaleString('it-IT',{maximumFractionDigits:0})} € ${label}</span>`;
+        deltaStr = `<span style="color:${col2};"> ${sign} ${Math.abs(deltaEur).toLocaleString('it-IT',{maximumFractionDigits:0})} € ${label}</span>`;
       }
     }
 
-    html+=`<div><span style="color:${col};font-size:13px;">●</span> <b>${y}</b>: ${val.toFixed(_decimals)} ${_yLabel}${denStr}${eurStr}${deltaStr}</div>`;
+    html+=`<div style="white-space:nowrap;"><span style="color:${col};font-size:13px;">●</span> <b>${y}</b>: ${val.toFixed(_decimals)} ${_yLabel}${denStr}${eurStr}${eurKgStr}${deltaStr}</div>`;
   });
 
   if(!hasData) return;
 
   tip.innerHTML=html;
   tip.style.display='block';
-  const tipW=320, tipH=tip.offsetHeight||80;
+  const tipW=460, tipH=tip.offsetHeight||80;
   const left = e.clientX+18+tipW > window.innerWidth ? e.clientX-tipW-10 : e.clientX+18;
   const top  = e.clientY-10+tipH > window.innerHeight ? e.clientY-tipH-10 : e.clientY-10;
   tip.style.left=left+'px'; tip.style.top=top+'px';
@@ -1962,6 +1972,7 @@ function renderPompaggiChart() {
 
   // Draw lines
   years.forEach((year, yi) => {
+    if (canvas._hiddenYears?.has(year)) return; // salta anni nascosti
     const color = YEAR_COLORS[yi % YEAR_COLORS.length];
     const data  = byYear[year];
     ctx.strokeStyle = color;
@@ -2005,15 +2016,18 @@ function renderPompaggiChart() {
   ctx.fillText('kWh', 0, 0);
   ctx.restore();
 
-  // Legend
-  legend.innerHTML = years.map((y, i) =>
-    `<div style="display:flex;align-items:center;gap:5px;">
-       <div style="width:20px;height:3px;background:${YEAR_COLORS[i%YEAR_COLORS.length]};border-radius:2px;"></div>
-       <span>${y}</span>
-     </div>`
-  ).join('');
+  // Legend — clickable
+  if (!canvas._hiddenYears) canvas._hiddenYears = new Set();
+  legend.innerHTML = years.map((y, i) => {
+    const col = YEAR_COLORS[i%YEAR_COLORS.length];
+    const hidden = canvas._hiddenYears.has(y);
+    return `<div data-year="${y}" data-canvasid="pompaggiCanvas" onclick="toggleYearKpi(this)"
+      style="display:flex;align-items:center;gap:5px;cursor:pointer;opacity:${hidden?'0.35':'1'};transition:opacity .2s;">
+      <div style="width:20px;height:3px;background:${col};border-radius:2px;"></div>
+      <span>${y}</span>
+    </div>`;
+  }).join('');
 
-  // Tooltip on hover
   canvas._byYear = byYear;
   canvas._years  = years;
   canvas._maxVal = maxVal;
@@ -2021,11 +2035,11 @@ function renderPompaggiChart() {
   canvas._cW     = cW;
   canvas._cH     = cH;
   canvas._xStep  = xStep;
-  canvas.onmousemove = pompaggiTooltip;
+  canvas.onmousemove = (e) => { pompaggiTooltip(e); kpiMagnifier(e); };
   canvas.onmouseleave = () => {
     const tip = document.getElementById('graficoTooltip');
     if (tip) tip.style.display = 'none';
-    renderPompaggiChart(); // redraw clean
+    const m=document.getElementById('kpiLens'); if(m)m.style.display='none';
   };
 }
 
@@ -2038,30 +2052,124 @@ function pompaggiTooltip(e) {
   const mi = Math.round((mx - PAD.left) / _xStep);
   if (mi<0||mi>11) return;
 
+  const hiddenYears = canvas._hiddenYears || new Set();
+  const visibleYears = _years.filter(y => !hiddenYears.has(y));
+
   let tip = document.getElementById('graficoTooltip');
   if (!tip) {
     tip = document.createElement('div');
     tip.id = 'graficoTooltip';
-    tip.style.cssText = 'position:fixed;background:#1f2937;color:#fff;padding:10px 14px;border-radius:10px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:2;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,.4);';
+    tip.style.cssText = 'position:fixed;background:#1f2937;color:#fff;padding:10px 16px;border-radius:10px;font-family:monospace;font-size:11px;pointer-events:none;z-index:9999;line-height:2;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,.4);';
     document.body.appendChild(tip);
   }
-  let html = `<div style="font-weight:700;margin-bottom:4px;font-size:13px;border-bottom:1px solid #374151;padding-bottom:4px;">${MESI_SHORT[mi]}</div>`;
+
+  const prezzoMedio = getPrezzoMedio();
+  let html = `<div style="font-weight:700;margin-bottom:4px;font-size:12px;border-bottom:1px solid #374151;padding-bottom:4px;white-space:nowrap;">
+    ${MESI_SHORT[mi]}
+    <span style="font-size:10px;color:#94a3b8;font-weight:400;"> (prezzo medio usato: ${prezzoMedio.toFixed(4)} €/kWh)</span>
+  </div>`;
+
   let hasData = false;
-  _years.forEach((y,i) => {
+  visibleYears.forEach(y => {
+    const i = _years.indexOf(y);
     const val = (_byYear[y]||[])[mi] || 0;
     if (val===0) return;
     hasData = true;
     const col = YEAR_COLORS[i%YEAR_COLORS.length];
-    html += `<div><span style="color:${col};font-size:13px;">●</span> <b>${y}</b>: ${val.toLocaleString('it-IT',{maximumFractionDigits:0})} kWh</div>`;
+    const prezzoMese = getPrezzoMese(y, mi);
+    const eur = val * prezzoMese;
+    const eurStr = eur>0 ? `<span style="color:#fbbf24;"> → ${eur.toLocaleString('it-IT',{maximumFractionDigits:0})} €</span>` : '';
+    html += `<div style="white-space:nowrap;"><span style="color:${col};font-size:13px;">●</span> <b>${y}</b>: ${val.toLocaleString('it-IT',{maximumFractionDigits:0})} kWh${eurStr}</div>`;
   });
+
   if(!hasData) return;
   tip.innerHTML = html;
   tip.style.display = 'block';
-  const tipW=260, tipH=tip.offsetHeight||80;
+  const tipW=460, tipH=tip.offsetHeight||80;
   const left = e.clientX+18+tipW > window.innerWidth ? e.clientX-tipW-10 : e.clientX+18;
   const top  = e.clientY-10+tipH > window.innerHeight ? e.clientY-tipH-10 : e.clientY-10;
   tip.style.left = left+'px';
   tip.style.top  = top+'px';
+}
+
+function kpiMagnifier(e) {
+  const canvas = e.target;
+  const rect   = canvas.getBoundingClientRect();
+  const mx     = e.clientX - rect.left;
+  const my     = e.clientY - rect.top;
+
+  const LENS_SIZE = 140;  // diametro lente in px
+  const ZOOM      = 2.5;  // fattore ingrandimento
+
+  // Crea lente se non esiste
+  let lens = document.getElementById('kpiLens');
+  if (!lens) {
+    lens = document.createElement('canvas');
+    lens.id = 'kpiLens';
+    lens.width  = LENS_SIZE;
+    lens.height = LENS_SIZE;
+    lens.style.cssText = `
+      position:fixed;
+      width:${LENS_SIZE}px; height:${LENS_SIZE}px;
+      border-radius:50%;
+      border:2.5px solid rgba(255,255,255,.6);
+      box-shadow:0 4px 20px rgba(0,0,0,.35);
+      pointer-events:none;
+      z-index:9998;
+      background:#fff;
+    `;
+    document.body.appendChild(lens);
+  }
+
+  // Posizione lente: in alto a sinistra del mouse, con margine
+  const offset = LENS_SIZE / 2 + 16;
+  let lx = e.clientX - offset - LENS_SIZE / 2;
+  let ly = e.clientY - offset - LENS_SIZE / 2;
+  // Evita uscita schermo
+  if (lx < 4) lx = e.clientX + 20;
+  if (ly < 4) ly = e.clientY + 20;
+
+  lens.style.left    = lx + 'px';
+  lens.style.top     = ly + 'px';
+  lens.style.display = 'block';
+
+  // Disegna area ingrandita
+  const lCtx = lens.getContext('2d');
+  lCtx.clearRect(0, 0, LENS_SIZE, LENS_SIZE);
+
+  // Clip circolare
+  lCtx.save();
+  lCtx.beginPath();
+  lCtx.arc(LENS_SIZE/2, LENS_SIZE/2, LENS_SIZE/2, 0, Math.PI*2);
+  lCtx.clip();
+
+  // Sorgente: area intorno al cursore sul canvas originale
+  const srcSize = LENS_SIZE / ZOOM;
+  const srcX = mx - srcSize / 2;
+  const srcY = my - srcSize / 2;
+
+  // Scala canvas → pixel reali
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  lCtx.drawImage(
+    canvas,
+    srcX * scaleX, srcY * scaleY,
+    srcSize * scaleX, srcSize * scaleY,
+    0, 0, LENS_SIZE, LENS_SIZE
+  );
+
+  // Mirino centrale
+  lCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+  lCtx.lineWidth   = 1;
+  lCtx.beginPath();
+  lCtx.moveTo(LENS_SIZE/2 - 8, LENS_SIZE/2);
+  lCtx.lineTo(LENS_SIZE/2 + 8, LENS_SIZE/2);
+  lCtx.moveTo(LENS_SIZE/2, LENS_SIZE/2 - 8);
+  lCtx.lineTo(LENS_SIZE/2, LENS_SIZE/2 + 8);
+  lCtx.stroke();
+
+  lCtx.restore();
 }
 
 // ════════════════════════════════════════════════════
