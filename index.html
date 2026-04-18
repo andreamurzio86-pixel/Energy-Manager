@@ -1340,6 +1340,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 // ════════════════════════════════════════════════════
 // COLUMN MAP (0-based after 4 date cols)
 // ════════════════════════════════════════════════════
+const PROXY_URL = 'https://tiny-bird-c32c.andreamurzio86.workers.dev/';
 const C = {
   blindo1:0, blindo2:1, blindo3:2, blindo4:3, blindo5:4, blindo6:5, blindo7:6,
   blindo400:7, blindo630:8,
@@ -4324,7 +4325,6 @@ document.getElementById('fileBackup').addEventListener('change', function(e){ re
 // ════════════════════════════════════════════════════
 // AI PANEL SUI GRAFICI
 // ════════════════════════════════════════════════════
-const PROXY_URL = 'https://tiny-bird-c32c.andreamurzio86.workers.dev/';
 let aiChartActive = null;
 
 function buildChartContext(chartId, title) {
