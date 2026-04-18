@@ -309,6 +309,67 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .ia-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
+
+/* ── AI CHAT PANEL ── */
+.chart-wrapper { position:relative; }
+.ai-chart-btn {
+  position:absolute; top:0; right:0;
+  background:var(--accent); color:#fff; border:none;
+  width:30px; height:30px; border-radius:8px;
+  font-size:14px; cursor:pointer; display:flex;
+  align-items:center; justify-content:center;
+  opacity:.85; transition:opacity .15s; z-index:10;
+}
+.ai-chart-btn:hover { opacity:1; }
+.ai-split { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+.ai-split-canvas { min-width:0; }
+.ai-split-chat {
+  display:flex; flex-direction:column; gap:0;
+  background:#f8fafc; border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; height:420px;
+}
+.ai-split-chat-header {
+  background:var(--accent); color:#fff;
+  padding:10px 14px; font-size:12px; font-weight:700;
+  font-family:var(--mono); display:flex;
+  justify-content:space-between; align-items:center;
+  flex-shrink:0;
+}
+.ai-split-chat-header button {
+  background:none; border:none; color:#fff;
+  font-size:16px; cursor:pointer; padding:0 4px;
+}
+.ai-split-messages {
+  flex:1; overflow-y:auto; padding:12px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.ai-msg-user {
+  background:#2563eb; color:#fff; border-radius:10px 10px 2px 10px;
+  padding:8px 12px; font-size:12px; align-self:flex-end;
+  max-width:85%; line-height:1.5;
+}
+.ai-msg-ai {
+  background:#fff; border:1px solid var(--border);
+  border-radius:10px 10px 10px 2px;
+  padding:8px 12px; font-size:12px; line-height:1.6;
+  max-width:95%;
+}
+.ai-msg-ai ul { margin:4px 0 4px 16px; }
+.ai-msg-ai li { margin-bottom:2px; }
+.ai-split-input {
+  display:flex; gap:0; border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.ai-split-input input {
+  flex:1; padding:10px 12px; border:none; outline:none;
+  font-size:12px; font-family:var(--sans); background:#fff;
+}
+.ai-split-input button {
+  padding:10px 14px; background:var(--accent); color:#fff;
+  border:none; cursor:pointer; font-size:12px; font-weight:700;
+}
+.btn-sm.danger-sm{background:#fff1f1;color:#dc2626;border-color:#fca5a5;}
+.btn-sm.danger-sm:hover{background:#dc2626;color:#fff;border-color:#dc2626;}
 /* GRAF TABS */
 .graf-tab{background:var(--surface);border:1.5px solid var(--border);color:var(--text-muted);padding:9px 18px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;transition:all .18s;font-family:var(--sans);box-shadow:var(--shadow-sm);}
 .graf-tab:hover{border-color:var(--accent);color:var(--accent);}
@@ -345,9 +406,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <div class="nav-item" onclick="showPage('grafici')">
     <span class="nav-icon">📈</span> Grafici
   </div>
-  <div class="nav-item" onclick="showPage('ia')">
-    <span class="nav-icon">🤖</span> Calcoli IA
-  </div>
   <div class="nav-item" onclick="showPage('dati')">
     <span class="nav-icon">📂</span> Gestione Dati
   </div>
@@ -357,13 +415,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <button onclick="exportData()">💾 Backup JSON</button>
     <button onclick="document.getElementById('fileBackup').click()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);">📥 Ripristina Backup</button>
     <input type="file" id="fileBackup" accept=".json" style="display:none">
-    <div style="border-top:1px solid rgba(255,255,255,.1);margin:8px 0;"></div>
-    <div style="font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:6px;font-family:var(--mono);">CANCELLA DATI</div>
-    <button class="danger" onclick="resetCategory('blindo')">🗑 Blindo</button>
-    <button class="danger" onclick="resetCategory('aria')">🗑 Aria</button>
-    <button class="danger" onclick="resetCategory('produzione')">🗑 Produzione</button>
-    <button class="danger" onclick="resetCategory('bollette')">🗑 Bollette extra</button>
-    <button class="danger" onclick="resetCategory('all')" style="margin-top:4px;background:rgba(180,0,0,.4);">🗑 TUTTO</button>
+
   </div>
 </aside>
 
@@ -503,9 +555,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 
   <!-- ══ PAGE: DATI ══ -->
   <div class="page" id="page-dati">
-    <div class="page-header">
-      <h2>Gestione Dati</h2>
-      <p>Carica e verifica i dati per ogni fonte energetica</p>
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h2>Gestione Dati</h2>
+        <p>Carica e verifica i dati per ogni fonte energetica</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);margin-right:4px;">CANCELLA:</div>
+        <button class="btn-sm danger-sm" onclick="resetCategory('blindo')">🗑 Blindo</button>
+        <button class="btn-sm danger-sm" onclick="resetCategory('aria')">🗑 Aria</button>
+        <button class="btn-sm danger-sm" onclick="resetCategory('produzione')">🗑 Produzione</button>
+        <button class="btn-sm danger-sm" onclick="resetCategory('bollette')">🗑 Bollette</button>
+        <button class="btn-sm danger-sm" onclick="resetCategory('all')" style="background:#dc2626;color:#fff;border-color:#dc2626;">🗑 TUTTO</button>
+      </div>
     </div>
 
     <!-- DATA SOURCE TABS -->
@@ -909,7 +971,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
         </div>
         <div id="kpiStab1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo, Bollette e Produzione</div>
-        <canvas id="kpiStab1Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiStab1">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiStab1','IPG Elettrico Stabilimento','(kWh Media + kWh Bassa) ÷ kg prodotti — Target: 2.590 kWh/kg')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiStab1">
+            <canvas id="kpiStab1Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiStab1" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- IPS Stampaggio -->
@@ -925,7 +993,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
         </div>
         <div id="kpiStab2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiStab2Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiStab2">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiStab2','IPS Stampaggio','(Lotto A + Lotto B) ÷ kg prodotti — Target: 1.830 kWh/kg')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiStab2">
+            <canvas id="kpiStab2Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiStab2" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- IPS Acqua fredda -->
@@ -941,7 +1015,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
         </div>
         <div id="kpiStab3Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiStab3Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiStab3">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiStab3','IPS Acqua Fredda','Gruppi Frigo ÷ kg prodotti — Target: 0.178 kWh/kg')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiStab3">
+            <canvas id="kpiStab3Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiStab3" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- IPS Aria -->
@@ -957,7 +1037,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
         </div>
         <div id="kpiStab4Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiStab4Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiStab4">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiStab4','IPS Aria','Compressori ÷ kg prodotti — Target: 0.259 kWh/kg')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiStab4">
+            <canvas id="kpiStab4Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiStab4" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- EnPI Aria Compressa -->
@@ -973,7 +1059,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
         </div>
         <div id="kpiStab5Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Aria (ripristina backup)</div>
-        <canvas id="kpiStab5Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiStab5">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiStab5','EnPI Aria Compressa','Compressori ÷ Nm³ aria — Target: 0.170 kWh/Nm³')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiStab5">
+            <canvas id="kpiStab5Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiStab5" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -997,7 +1089,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="pompaggiLegend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="pompaggiEmpty" style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica i dati Blindo per visualizzare il grafico</div>
-        <canvas id="pompaggiCanvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-pompaggi">
+          <button class="ai-chart-btn" onclick="apriAiChart('pompaggi','Pompaggi','kWh pompaggi mensili per anno')" title="Analisi IA">🤖</button>
+          <div id="chart-area-pompaggi">
+            <canvas id="pompaggiCanvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-pompaggi" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -1036,7 +1134,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="kpiAria1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="kpiAria1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Aria</div>
-        <canvas id="kpiAria1Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiAria1">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiAria1','kWh Compressori / Nm³','(Compressori + Sala NH) ÷ Nm³ totali mese')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiAria1">
+            <canvas id="kpiAria1Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiAria1" style="display:none;"></div>
+        </div>
       </div>
       <div class="card" style="padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1045,7 +1149,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="kpiAria2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="kpiAria2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiAria2Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiAria2">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiAria2','kWh Compressori / kg','(Compressori + Sala NH) ÷ kg trasformati')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiAria2">
+            <canvas id="kpiAria2Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiAria2" style="display:none;"></div>
+        </div>
       </div>
       <div class="card" style="padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1054,7 +1164,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="kpiAria3Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="kpiAria3Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiAria3Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiAria3">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiAria3','kWh Compressori / ore','(Compressori + Sala NH) ÷ ore lavorate')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiAria3">
+            <canvas id="kpiAria3Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiAria3" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -1067,7 +1183,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="kpiFrigo1Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="kpiFrigo1Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiFrigo1Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiFrigo1">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiFrigo1','kWh Frigoriferi / kg','(RS370+RS400+FrigoRS330+FrigoAtem) ÷ kg prodotti')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiFrigo1">
+            <canvas id="kpiFrigo1Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiFrigo1" style="display:none;"></div>
+        </div>
       </div>
       <div class="card" style="padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1076,7 +1198,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           <div id="kpiFrigo2Legend" style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;"></div>
         </div>
         <div id="kpiFrigo2Empty" style="text-align:center;padding:30px;color:var(--text-muted);font-family:var(--mono);font-size:12px;">Carica dati Blindo e Produzione</div>
-        <canvas id="kpiFrigo2Canvas" style="display:none;width:100%;"></canvas>
+        <div class="chart-wrapper" id="wrapper-kpiFrigo2">
+          <button class="ai-chart-btn" onclick="apriAiChart('kpiFrigo2','kWh Frigoriferi / ore','(RS370+RS400+FrigoRS330+FrigoAtem) ÷ ore lavorate')" title="Analisi IA">🤖</button>
+          <div id="chart-area-kpiFrigo2">
+            <canvas id="kpiFrigo2Canvas" style="display:none;width:100%;"></canvas>
+          </div>
+          <div id="ai-panel-kpiFrigo2" style="display:none;"></div>
+        </div>
       </div>
     </div>
 
@@ -1296,7 +1424,7 @@ function showDS(name) {
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-'+name));
-  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', ['dashboard','grafici','ia','dati'][i] === name));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', ['dashboard','grafici','dati'][i] === name));
   if (name === 'dashboard' && allData.length > 0) computeTable();
   if (name === 'grafici') renderGrafici();
 }
@@ -1819,6 +1947,7 @@ function setDashMode(mode) {
   dashMode = mode;
   document.getElementById('modeSingolo').style.display   = mode==='singolo'?'block':'none';
   document.getElementById('modeConfronto').style.display = mode==='confronto'?'block':'none';
+  document.getElementById('dashProdKpi').style.display   = mode==='singolo'?'grid':'none';
   const btnS = document.getElementById('btnModoSingolo');
   const btnC = document.getElementById('btnModoConfronto');
   btnS.style.background = mode==='singolo'?'var(--accent)':''; btnS.style.color = mode==='singolo'?'#fff':'';
@@ -4031,6 +4160,146 @@ onFilterModeChange();
 renderBollette();
 renderProduzione();
 document.getElementById('fileBackup').addEventListener('change', function(e){ restoreBackup(e.target.files[0]); this.value=''; });
+
+// ════════════════════════════════════════════════════
+// AI PANEL SUI GRAFICI
+// ════════════════════════════════════════════════════
+const PROXY_URL = 'https://tiny-bird-c32c.andreamurzio86.workers.dev/';
+let aiChartActive = null;
+
+function buildChartContext(chartId, title) {
+  const MESI_N = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const lines = [`=== DATI KPI: ${title} ===`];
+  const canvas = document.getElementById(chartId + 'Canvas');
+  if (canvas && canvas._ratioByYear) {
+    const {_ratioByYear, _years, _yLabel, _denByYear} = canvas;
+    _years.forEach(y => {
+      (_ratioByYear[y]||[]).forEach((v,m) => {
+        if (!v) return;
+        const den = _denByYear?.[y]?.[m]||0;
+        lines.push(`${y}/${MESI_N[m]}: ${v.toFixed(4)} ${_yLabel}${den>0?' (den: '+Math.round(den).toLocaleString('it-IT')+')':''}`);
+      });
+    });
+  } else if (chartId==='pompaggi') {
+    const c = document.getElementById('pompaggiCanvas');
+    if (c?._byYear) c._years.forEach(y=>(c._byYear[y]||[]).forEach((v,m)=>{ if(v>0) lines.push(`${y}/${MESI_N[m]}: ${Math.round(v).toLocaleString('it-IT')} kWh`); }));
+  }
+  if (PROD_MENSILE.length) {
+    lines.push('\n=== PRODUZIONE (ultimi 6 mesi) ===');
+    PROD_MENSILE.slice(-6).forEach(r=>{
+      const kgh=r.ore>0?(r.kg/r.ore).toFixed(1):'—';
+      lines.push(`${r.a}/${String(r.m).padStart(2,'0')}: ${Math.round(r.kg).toLocaleString('it-IT')} kg, ${Math.round(r.ore)} h, ${kgh} kg/h`);
+    });
+  }
+  return lines.join('\n');
+}
+
+async function apriAiChart(chartId, title, desc) {
+  if (aiChartActive===chartId) { chiudiAiChart(chartId); return; }
+  if (aiChartActive) chiudiAiChart(aiChartActive);
+  aiChartActive = chartId;
+
+  const wrapper   = document.getElementById('wrapper-'+chartId);
+  const chartArea = document.getElementById('chart-area-'+chartId);
+  const panel     = document.getElementById('ai-panel-'+chartId);
+
+  wrapper.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;';
+  chartArea.style.minWidth = '0';
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="ai-split-chat">
+      <div class="ai-split-chat-header">
+        <span>🤖 ${title}</span>
+        <button onclick="chiudiAiChart('${chartId}')">✕</button>
+      </div>
+      <div class="ai-split-messages" id="ai-msgs-${chartId}">
+        <div class="ia-msg-ai" id="ai-thinking-${chartId}"><span style="color:var(--text-muted);font-size:11px;">⏳ Analisi in corso...</span></div>
+      </div>
+      <div class="ai-split-input">
+        <input type="text" id="ai-input-${chartId}" placeholder="Fai una domanda..."
+          onkeydown="if(event.key==='Enter') inviaAiChart('${chartId}','${title}')">
+        <button onclick="inviaAiChart('${chartId}','${title}')">➤</button>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(()=>{
+    if (chartId.startsWith('kpiStab')) renderKpiStabilimento();
+    else if (chartId==='pompaggi') renderPompaggiChart();
+    else renderKpiCharts();
+  });
+
+  const ctx = buildChartContext(chartId, title);
+  window['ai_ctx_'+chartId] = ctx;
+  window['ai_hist_'+chartId] = [];
+
+  try {
+    const prompt = `Sei un esperto di energia e produzione industriale. Analizza questo KPI di un'azienda italiana di stampaggio plastica.
+
+KPI: ${title}
+FORMULA: ${desc}
+
+DATI:
+${ctx}
+
+Analisi sintetica in italiano:
+• ⚠ anomalie con mese e valore
+• ✅ trend positivi
+• 💡 max 2 suggerimenti concreti
+Massimo 8 punti, con numeri specifici.`;
+
+    const resp = await fetch(PROXY_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({max_tokens:1000, messages:[{role:'user',content:prompt}]})});
+    const json = await resp.json();
+    const testo = json.content?.[0]?.text || 'Nessuna risposta.';
+    window['ai_hist_'+chartId] = [{role:'user',content:prompt},{role:'assistant',content:testo}];
+    const el = document.getElementById('ai-thinking-'+chartId);
+    if (el) el.innerHTML = formatIaOutput(testo);
+  } catch(e) {
+    const el = document.getElementById('ai-thinking-'+chartId);
+    if (el) el.innerHTML = `<span style="color:#dc2626;">Errore: ${e.message}</span>`;
+  }
+}
+
+async function inviaAiChart(chartId, title) {
+  const input = document.getElementById('ai-input-'+chartId);
+  const domanda = input.value.trim(); if (!domanda) return;
+  input.value = '';
+  const msgs = document.getElementById('ai-msgs-'+chartId);
+  const hist = window['ai_hist_'+chartId]||[];
+  const ctx  = window['ai_ctx_'+chartId]||'';
+
+  const uDiv = document.createElement('div'); uDiv.className='ai-msg-user'; uDiv.textContent=domanda; msgs.appendChild(uDiv);
+  const aDiv = document.createElement('div'); aDiv.className='ia-msg-ai'; aDiv.innerHTML='<span style="color:var(--text-muted)">⏳</span>'; msgs.appendChild(aDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+  hist.push({role:'user', content:domanda});
+
+  try {
+    const resp = await fetch(PROXY_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({max_tokens:600,
+        system:`Sei un esperto di energia e produzione. Stai analizzando "${title}".\n\nDATI:\n${ctx}\n\nRispondi in italiano, sintetico, con numeri.`,
+        messages: hist})});
+    const json = await resp.json();
+    const testo = json.content?.[0]?.text||'Nessuna risposta.';
+    hist.push({role:'assistant',content:testo});
+    aDiv.innerHTML = formatIaOutput(testo);
+  } catch(e) { aDiv.innerHTML=`<span style="color:#dc2626;">Errore: ${e.message}</span>`; }
+  msgs.scrollTop = msgs.scrollHeight;
+  input.focus();
+}
+
+function chiudiAiChart(chartId) {
+  aiChartActive = null;
+  const wrapper = document.getElementById('wrapper-'+chartId);
+  const panel   = document.getElementById('ai-panel-'+chartId);
+  wrapper.style.cssText = '';
+  panel.style.display = 'none';
+  panel.innerHTML = '';
+  requestAnimationFrame(()=>{
+    if (chartId.startsWith('kpiStab')) renderKpiStabilimento();
+    else if (chartId==='pompaggi') renderPompaggiChart();
+    else renderKpiCharts();
+  });
+}
 </script>
 </body>
 </html>
