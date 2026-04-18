@@ -310,6 +310,37 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 @keyframes spin{to{transform:rotate(360deg);}}
 
 
+
+/* ── LOGIN ── */
+#login-screen {
+  position:fixed; inset:0; background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
+  display:flex; align-items:center; justify-content:center; z-index:99999;
+}
+#login-box {
+  background:#1e293b; border:1px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:40px; width:320px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5); text-align:center;
+}
+#login-box .logo { font-size:40px; margin-bottom:12px; }
+#login-box h2 { color:#fff; font-size:20px; font-weight:700; margin-bottom:4px; font-family:var(--sans); }
+#login-box p { color:rgba(255,255,255,.4); font-size:12px; font-family:var(--mono); margin-bottom:28px; }
+#login-box input {
+  width:100%; padding:12px 16px; border-radius:10px;
+  border:1.5px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05);
+  color:#fff; font-size:14px; font-family:var(--sans); outline:none;
+  box-sizing:border-box; margin-bottom:12px; text-align:center; letter-spacing:3px;
+}
+#login-box input:focus { border-color:#16a34a; }
+#login-box input::placeholder { letter-spacing:0; color:rgba(255,255,255,.3); }
+#login-box button {
+  width:100%; padding:12px; border-radius:10px; border:none;
+  background:linear-gradient(135deg,#16a34a,#0d9488); color:#fff;
+  font-size:14px; font-weight:700; cursor:pointer; font-family:var(--sans);
+  transition:opacity .2s;
+}
+#login-box button:hover { opacity:.9; }
+#login-error { color:#f87171; font-size:12px; margin-top:8px; font-family:var(--mono); min-height:16px; }
+
 /* ── AI CHAT PANEL ── */
 .chart-wrapper { position:relative; }
 .ai-chart-btn {
@@ -391,6 +422,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 </style>
 </head>
 <body>
+
+<div id="login-screen">
+  <div id="login-box">
+    <div class="logo">⚡</div>
+    <h2>Energy Manager</h2>
+    <p>Inserisci la password per accedere</p>
+    <input type="password" id="login-pwd" placeholder="Password"
+      onkeydown="if(event.key==='Enter') verificaPassword()">
+    <button onclick="verificaPassword()">Accedi →</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
 <div class="shell">
 
 <!-- ═══ SIDEBAR ═══ -->
@@ -415,6 +459,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <button onclick="exportData()">💾 Backup JSON</button>
     <button onclick="document.getElementById('fileBackup').click()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);">📥 Ripristina Backup</button>
     <input type="file" id="fileBackup" accept=".json" style="display:none">
+    <div id="github-load-status" style="font-size:10px;color:rgba(255,255,255,.5);font-family:var(--mono);text-align:center;min-height:14px;"></div>
 
   </div>
 </aside>
@@ -2311,10 +2356,102 @@ function exportData() {
   };
   const total = backup.blindo.length + backup.aria.length;
   if (!total && !backup.bollette.length && !backup.produzione.length) { alert('Nessun dato da salvare.'); return; }
+  // Salva su GitHub E scarica localmente
+  salvaBackupGitHub(backup);
   const blob = new Blob([JSON.stringify(backup)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'energy_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
-  console.log(`[backup] Blindo:${backup.blindo.length} Aria:${backup.aria.length} Bollette:${backup.bollette.length} Produzione:${backup.produzione.length}`);
+  a.download = 'Ultimo_Backup.json'; a.click();
+  console.log(`[backup] Blindo:${backup.blindo.length} Aria:${backup.aria.length}`);
+}
+
+async function salvaBackupGitHub(backup) {
+  try {
+    // Prima recupera SHA attuale del file
+    const getResp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-Action':'github-load'}
+    });
+    const getData = await getResp.json();
+    const sha = getData.sha || null;
+
+    // Converti backup in base64
+    const json = JSON.stringify(backup);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+
+    // Salva su GitHub
+    await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-Action':'github-save'},
+      body: JSON.stringify({ content: b64, sha })
+    });
+    console.log('[github] Backup salvato su GitHub OK');
+  } catch(e) {
+    console.warn('[github] Salvataggio fallito:', e.message);
+  }
+}
+
+async function caricaBackupGitHub() {
+  const pill = document.getElementById('github-load-status');
+  if (pill) pill.textContent = '⏳ Caricamento dati...';
+  try {
+    const resp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-Action':'github-load'}
+    });
+    const data = await resp.json();
+    if (data.error || !data.content) {
+      if (pill) pill.textContent = '⚠ Nessun backup su GitHub';
+      return false;
+    }
+    // Decodifica base64
+    const json = decodeURIComponent(escape(atob(data.content)));
+    const backup = JSON.parse(json);
+    // Usa restoreBackup logic
+    restoreFromObject(backup);
+    if (pill) pill.textContent = '';
+    console.log('[github] Backup caricato da GitHub OK');
+    return true;
+  } catch(e) {
+    console.warn('[github] Caricamento fallito:', e.message);
+    if (pill) pill.textContent = '⚠ Errore caricamento';
+    return false;
+  }
+}
+
+function restoreFromObject(data) {
+  if (!data || !data.blindo) return;
+  if (data.blindo?.length) {
+    allData = data.blindo.map(r=>({key:r[0], dt:new Date(r[1]), v:new Float64Array(r[2])}));
+    allData.sort((a,b)=>a.dt-b.dt);
+    saveToStorage();
+  }
+  if (data.aria?.length) {
+    ariaData = data.aria.map(r => r.length===5
+      ? {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]}
+      : {key:r[0], dt:new Date(r[0]), portata:r[1]||0, pmax:0, pmedia:r[2]||0});
+    ariaData.sort((a,b)=>a.dt-b.dt);
+    saveAria();
+  }
+  if (data.bollette?.length) {
+    const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+    data.bollette.forEach(b=>{ if(!BOLLETTE.find(x=>x.m===b.m&&x.a===b.a)) BOLLETTE.push(b); });
+    BOLLETTE.sort((a,b)=>a.a!==b.a?a.a-b.a:MESI_IT.indexOf(a.m)-MESI_IT.indexOf(b.m));
+    localStorage.setItem('energyBollette', JSON.stringify(BOLLETTE));
+  }
+  if (data.produzione?.length) {
+    data.produzione.forEach(r => {
+      const ore = r.ore !== undefined ? r.ore : (r.ore_min||0)/60;
+      const entry = {a:r.a, m:r.m, kg:r.kg||0, ore, pezzi:r.pezzi||0, scarto:r.scarto||0, firstDay:r.firstDay||1, lastDay:r.lastDay||31};
+      const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
+      if (idx>=0) PROD_MENSILE[idx]=entry; else PROD_MENSILE.push(entry);
+    });
+    PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
+  }
+  // Aggiorna UI
+  if (allData.length) { updateStoragePill(); runQualityCheck(allData.length,0,0,'verify'); }
+  if (ariaData.length) { updateAriaPill(); renderAriaMensile(); }
+  renderBollette(); renderProduzione(); populateFilterSelectors();
+  if (allData.length) computeTable();
 }
 
 function updateStoragePill() {
@@ -4105,10 +4242,20 @@ async function eseguiAggiornamentoSettimanale() {
       });
     }
 
-    // STEP 5: Salva nuovo backup automaticamente
-    log('💾 Salvataggio nuovo backup...');
-    exportData();
-    log('✅ Backup aggiornato scaricato automaticamente!');
+    // STEP 5: Salva backup su GitHub E scarica localmente
+    log('💾 Salvataggio backup su GitHub...');
+    const backupObj = {
+      version:3, date:new Date().toISOString(),
+      blindo: allData.map(r=>[r.key,r.dt.getTime(),Array.from(r.v)]),
+      aria: ariaData.map(r=>[r.key,r.dt.getTime(),r.portata,r.pmax,r.pmedia]),
+      bollette: BOLLETTE, produzione: PROD_MENSILE
+    };
+    await salvaBackupGitHub(backupObj);
+    // Scarica anche localmente
+    const blob = new Blob([JSON.stringify(backupObj)],{type:'application/json'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='Ultimo_Backup.json'; a.click();
+    log('✅ Backup salvato su GitHub e scaricato!');
 
     // Aggiorna UI
     if (allData.length) { updateStoragePill(); populateFilterSelectors(); computeTable(); }
@@ -4160,6 +4307,19 @@ onFilterModeChange();
 renderBollette();
 renderProduzione();
 document.getElementById('fileBackup').addEventListener('change', function(e){ restoreBackup(e.target.files[0]); this.value=''; });
+
+// Auto-caricamento da GitHub all'avvio
+(async () => {
+  if (allData.length === 0) {
+    // Nessun dato in localStorage — carica da GitHub
+    console.log('[startup] Nessun dato locale, carico da GitHub...');
+    await caricaBackupGitHub();
+  } else {
+    console.log('[startup] Dati locali trovati, skip GitHub load');
+    const pill = document.getElementById('github-load-status');
+    if (pill) pill.textContent = '';
+  }
+})();
 
 // ════════════════════════════════════════════════════
 // AI PANEL SUI GRAFICI
@@ -4300,6 +4460,39 @@ function chiudiAiChart(chartId) {
     else renderKpiCharts();
   });
 }
+
+// ── LOGIN ──
+(function() {
+  // Hash SHA-256 della password (non memorizza la password in chiaro)
+  
+  
+
+  // Usa una password semplice con confronto diretto (per semplicità senza server)
+  const PASSWORD = 'staamp2026';
+
+  // Controlla se già autenticato in sessione
+  if (sessionStorage.getItem('em_auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+  }
+
+  window.verificaPassword = function() {
+    const input = document.getElementById('login-pwd').value;
+    const errEl = document.getElementById('login-error');
+    if (input === PASSWORD) {
+      sessionStorage.setItem('em_auth', '1');
+      const screen = document.getElementById('login-screen');
+      screen.style.opacity = '0';
+      screen.style.transition = 'opacity .3s';
+      setTimeout(() => screen.style.display = 'none', 300);
+    } else {
+      errEl.textContent = '❌ Password errata';
+      document.getElementById('login-pwd').value = '';
+      document.getElementById('login-pwd').focus();
+      setTimeout(() => errEl.textContent = '', 2000);
+    }
+  };
+})();
+
 </script>
 </body>
 </html>
