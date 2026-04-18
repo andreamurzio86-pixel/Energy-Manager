@@ -793,19 +793,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);margin-bottom:4px;">kWh MEDIA</div>
-            <input type="number" id="newKwM" placeholder="500000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
+            <input type="text" inputmode="decimal" id="newKwM" placeholder="500000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);margin-bottom:4px;">€ MEDIA</div>
-            <input type="number" id="newEuM" placeholder="100000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
+            <input type="text" inputmode="decimal" id="newEuM" placeholder="100000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);margin-bottom:4px;">kWh BASSA</div>
-            <input type="number" id="newKwB" placeholder="6000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
+            <input type="text" inputmode="decimal" id="newKwB" placeholder="6000" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
           </div>
           <div>
             <div style="font-size:10px;color:var(--text-muted);font-family:var(--mono);margin-bottom:4px;">€ BASSA</div>
-            <input type="number" id="newEuB" placeholder="1200" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
+            <input type="text" inputmode="decimal" id="newEuB" placeholder="1200" style="width:100%;border:1px solid var(--border);background:var(--bg);padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11px;">
           </div>
           <button class="btn-apply" onclick="addBollettaRow()">➕ AGGIUNGI</button>
         </div>
@@ -2291,6 +2291,29 @@ function computeConfronto() {
 // ════════════════════════════════════════════════════
 // STORAGE
 // ════════════════════════════════════════════════════
+// Auto-save su GitHub con debounce 4 secondi
+let _autoSaveTimer = null;
+let _githubSha = null; // SHA corrente del file su GitHub
+
+function autoSaveGitHub() {
+  if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(async () => {
+    const pill = document.getElementById('github-load-status');
+    if (pill) pill.textContent = '💾 Salvataggio su GitHub...';
+    const backup = {
+      version: 3,
+      date: new Date().toISOString(),
+      blindo: allData.map(r=>[r.key, r.dt.getTime(), Array.from(r.v)]),
+      aria: ariaData.map(r=>[r.key, r.dt.getTime(), r.portata, r.pmax, r.pmedia]),
+      bollette: BOLLETTE,
+      produzione: PROD_MENSILE,
+    };
+    const ok = await salvaBackupGitHub(backup);
+    if (pill) pill.textContent = ok ? '✅ Salvato su GitHub' : '⚠ Errore salvataggio';
+    setTimeout(() => { if (pill) pill.textContent = ''; }, 3000);
+  }, 4000);
+}
+
 function saveToStorage() {
   try {
     const compact = allData.map(r => [r.key, r.dt.getTime(), Array.from(r.v)]);
@@ -2300,6 +2323,7 @@ function saveToStorage() {
   } catch(e) {
     alert('⚠ Dati troppo grandi per il localStorage (>5MB).\nUsa 💾 BACKUP per salvare il file JSON sul PC e ricaricarlo la prossima volta.');
   }
+  autoSaveGitHub();
 }
 
 function loadFromStorage() {
@@ -2367,27 +2391,35 @@ function exportData() {
 
 async function salvaBackupGitHub(backup) {
   try {
-    // Prima recupera SHA attuale del file
-    const getResp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json', 'X-Action':'github-load'}
-    });
-    const getData = await getResp.json();
-    const sha = getData.sha || null;
+    // Usa SHA in cache, oppure recuperalo da GitHub
+    let sha = _githubSha;
+    if (!sha) {
+      const getResp = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-Action':'github-load'}
+      });
+      const getData = await getResp.json();
+      sha = getData.sha || null;
+      if (sha) _githubSha = sha;
+    }
 
     // Converti backup in base64
     const json = JSON.stringify(backup);
     const b64 = btoa(unescape(encodeURIComponent(json)));
 
     // Salva su GitHub
-    await fetch(PROXY_URL, {
+    const saveResp = await fetch(PROXY_URL, {
       method: 'POST',
       headers: {'Content-Type':'application/json', 'X-Action':'github-save'},
       body: JSON.stringify({ content: b64, sha })
     });
+    const saveData = await saveResp.json();
+    if (saveData.sha) _githubSha = saveData.sha;
     console.log('[github] Backup salvato su GitHub OK');
+    return true;
   } catch(e) {
     console.warn('[github] Salvataggio fallito:', e.message);
+    return false;
   }
 }
 
@@ -2404,6 +2436,7 @@ async function caricaBackupGitHub() {
       if (pill) pill.textContent = '⚠ Nessun backup su GitHub';
       return false;
     }
+    if (data.sha) _githubSha = data.sha; // Memorizza SHA per salvataggi futuri
     // Decodifica base64
     const json = decodeURIComponent(escape(atob(data.content)));
     const backup = JSON.parse(json);
@@ -3113,10 +3146,12 @@ function renderBollette() {
 function addBollettaRow() {
   const mese=document.getElementById('newMese').value.trim().toUpperCase();
   const anno=parseInt(document.getElementById('newAnno').value);
-  const km=parseFloat(document.getElementById('newKwM').value.replace(',','.'));
-  const em=parseFloat(document.getElementById('newEuM').value.replace(/[€\s\.]/g,'').replace(',','.'));
-  const kb=parseFloat(document.getElementById('newKwB').value.replace(',','.'));
-  const eb=parseFloat(document.getElementById('newEuB').value.replace(/[€\s\.]/g,'').replace(',','.'));
+  // Gestisce sia virgola che punto come decimale, e punto come separatore migliaia
+  const parseNum = s => parseFloat(String(s).trim().replace(/\./g,'').replace(',','.')) || parseFloat(String(s).trim().replace(',','.'));
+  const km = parseNum(document.getElementById('newKwM').value);
+  const em = parseNum(document.getElementById('newEuM').value.replace(/[€\s]/g,''));
+  const kb = parseNum(document.getElementById('newKwB').value);
+  const eb = parseNum(document.getElementById('newEuB').value.replace(/[€\s]/g,''));
 
   const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
   if (!MESI_IT.includes(mese)) { alert('Mese non valido. Usa es: GENNAIO, FEBBRAIO...'); return; }
@@ -3133,6 +3168,7 @@ function addBollettaRow() {
 
   // Save to localStorage
   try { localStorage.setItem('energyBollette',JSON.stringify(BOLLETTE)); } catch(e){}
+  autoSaveGitHub();
 
   renderBollette();
   populateFilterSelectors();
@@ -3150,9 +3186,6 @@ const ARIA_KEY = 'energyAriaData_v2'; // v2 = nuovo formato compresso
 let ariaData = []; // {key, dt, portata, pmax, pmedia}
 
 function saveAria() {
-  // localStorage è pieno (Blindo occupa ~4.8MB) — usiamo sessionStorage
-  // I dati Aria restano in memoria durante la sessione
-  // Per persistenza usa il backup JSON
   try {
     const compact = ariaData.map(r=>[r.dt.getTime(), Math.round(r.portata), +r.pmedia.toFixed(1)]);
     sessionStorage.setItem(ARIA_KEY, JSON.stringify(compact));
@@ -3160,6 +3193,7 @@ function saveAria() {
   } catch(e) {
     console.warn('[aria] sessionStorage fallito, dati solo in memoria:', e.message);
   }
+  autoSaveGitHub();
 }
 
 function loadAria() {
@@ -3641,6 +3675,7 @@ function processProdRows(pr, mode, pw) {
   PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
   pw.style.display='none';
   renderProduzione();
+  autoSaveGitHub();
   if (allData.length) {
     populateFilterSelectors();
     computeTable();
