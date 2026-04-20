@@ -4247,7 +4247,7 @@ function avviaAggiornamentoSettimanale() {
 
         <!-- Backup -->
         <div class="sw-step" id="sw-step-backup">
-          <div class="sw-label">1. Backup attuale <span style="color:#6b7280;font-weight:400;">(obbligatorio)</span></div>
+          <div class="sw-label">1. Backup attuale <span style="color:#6b7280;font-weight:400;">(opzionale — solo se hai un backup corretto da ripristinare)</span></div>
           <div class="sw-file-row" onclick="document.getElementById('sw-file-backup').click()">
             <span class="sw-icon">📦</span>
             <span id="sw-name-backup" class="sw-name">Seleziona Ultimo_Backup.json</span>
@@ -4337,9 +4337,6 @@ function swSetFile(tipo, input) {
 }
 
 async function eseguiAggiornamentoSettimanale() {
-  const backupFile = window.sw_file_backup;
-  if (!backupFile) { alert('Seleziona almeno il file di backup!'); return; }
-
   const btn = document.getElementById('sw-btn-ok');
   const progress = document.getElementById('sw-progress');
   btn.disabled = true;
@@ -4350,49 +4347,53 @@ async function eseguiAggiornamentoSettimanale() {
   progress.innerHTML = '';
 
   try {
-    // STEP 1: Ripristina backup
-    log('📦 Ripristino backup...');
-    await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          // Usa la stessa logica di restoreBackup
-          if (data.version === 3 || data.blindo) {
-            if (data.blindo?.length) {
-              allData = data.blindo.map(r=>({key:r[0], dt:new Date(r[1]), v:new Float64Array(r[2])}));
-              allData.sort((a,b)=>a.dt-b.dt);
-              saveToStorage();
+    // STEP 1: Ripristina backup (opzionale)
+    if (window.sw_file_backup) {
+      log('📦 Ripristino backup...');
+      await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (data.version === 3 || data.blindo) {
+              if (data.blindo?.length) {
+                allData = data.blindo.map(r=>({key:r[0], dt:new Date(r[1]), v:new Float64Array(r[2])}));
+                allData.sort((a,b)=>a.dt-b.dt);
+                saveToStorage();
+              }
+              if (data.aria?.length) {
+                ariaData = data.aria.map(r => r.length===5
+                  ? {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]}
+                  : {key:r[0], dt:new Date(r[0]), portata:r[1]||0, pmax:0, pmedia:r[2]||0});
+                ariaData.sort((a,b)=>a.dt-b.dt);
+                saveAria();
+              }
+              if (data.bollette?.length) {
+                const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+                data.bollette.forEach(b=>{ if(!BOLLETTE.find(x=>x.m===b.m&&x.a===b.a)) BOLLETTE.push(b); });
+                BOLLETTE.sort((a,b)=>a.a!==b.a?a.a-b.a:MESI_IT.indexOf(a.m)-MESI_IT.indexOf(b.m));
+                localStorage.setItem('energyBollette', JSON.stringify(BOLLETTE));
+              }
+              if (data.produzione?.length) {
+                data.produzione.forEach(r => {
+                  const ore = r.ore !== undefined ? r.ore : (r.ore_min||0)/60;
+                  const entry = {a:r.a, m:r.m, kg:r.kg||0, ore, pezzi:r.pezzi||0, scarto:r.scarto||0, firstDay:r.firstDay||1, lastDay:r.lastDay||31};
+                  const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
+                  if (idx>=0) PROD_MENSILE[idx]=entry; else PROD_MENSILE.push(entry);
+                });
+                PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
+              }
             }
-            if (data.aria?.length) {
-              ariaData = data.aria.map(r => r.length===5
-                ? {key:r[0], dt:new Date(r[1]), portata:r[2], pmax:r[3], pmedia:r[4]}
-                : {key:r[0], dt:new Date(r[0]), portata:r[1]||0, pmax:0, pmedia:r[2]||0});
-              ariaData.sort((a,b)=>a.dt-b.dt);
-              saveAria();
-            }
-            if (data.bollette?.length) {
-              const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
-              data.bollette.forEach(b=>{ if(!BOLLETTE.find(x=>x.m===b.m&&x.a===b.a)) BOLLETTE.push(b); });
-              BOLLETTE.sort((a,b)=>a.a!==b.a?a.a-b.a:MESI_IT.indexOf(a.m)-MESI_IT.indexOf(b.m));
-              localStorage.setItem('energyBollette', JSON.stringify(BOLLETTE));
-            }
-            if (data.produzione?.length) {
-              data.produzione.forEach(r => {
-                const ore = r.ore !== undefined ? r.ore : (r.ore_min||0)/60;
-                const entry = {a:r.a, m:r.m, kg:r.kg||0, ore, pezzi:r.pezzi||0, scarto:r.scarto||0, firstDay:r.firstDay||1, lastDay:r.lastDay||31};
-                const idx = PROD_MENSILE.findIndex(x=>x.a===r.a&&x.m===r.m);
-                if (idx>=0) PROD_MENSILE[idx]=entry; else PROD_MENSILE.push(entry);
-              });
-              PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
-            }
-          }
-          log(`✅ Backup ripristinato — Blindo: ${allData.length.toLocaleString('it-IT')} ore, Aria: ${ariaData.length.toLocaleString('it-IT')} ore, Prod: ${PROD_MENSILE.length} mesi`);
-          resolve();
-        } catch(e) { reject(e); }
-      };
-      reader.readAsText(backupFile, 'UTF-8');
-    });
+            log(`✅ Backup ripristinato — Blindo: ${allData.length.toLocaleString('it-IT')} ore, Aria: ${ariaData.length.toLocaleString('it-IT')} ore, Prod: ${PROD_MENSILE.length} mesi`);
+            resolve();
+          } catch(e) { reject(e); }
+        };
+        reader.readAsText(window.sw_file_backup, 'UTF-8');
+      });
+    } else {
+      log('ℹ️ Nessun backup selezionato — uso dati già in memoria');
+      log(`   Blindo: ${allData.length.toLocaleString('it-IT')} ore, Aria: ${ariaData.length.toLocaleString('it-IT')} ore`);
+    }
 
     // STEP 2: Blindo
     if (window.sw_file_blindo) {
@@ -4402,6 +4403,10 @@ async function eseguiAggiornamentoSettimanale() {
         reader.onload = ev => {
           const before = allData.length;
           parseTSV(ev.target.result, null);
+          saveToStorage();
+          updateStoragePill();
+          populateFilterSelectors();
+          computeTable();
           log(`✅ Blindo: ${allData.length.toLocaleString('it-IT')} ore totali (+${allData.length-before})`);
           resolve();
         };
