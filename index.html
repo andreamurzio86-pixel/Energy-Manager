@@ -450,6 +450,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <div class="nav-item" onclick="showPage('grafici')">
     <span class="nav-icon">📈</span> Grafici
   </div>
+  <div class="nav-item" onclick="showPage('tabelle')">
+    <span class="nav-icon">📋</span> Tabelle
+  </div>
   <div class="nav-item" onclick="showPage('dati')">
     <span class="nav-icon">📂</span> Gestione Dati
   </div>
@@ -599,6 +602,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   </div>
 
   <!-- ══ PAGE: DATI ══ -->
+  <!-- ══ PAGINA TABELLE ══ -->
+  <div class="page" id="page-tabelle">
+    <div class="page-header">
+      <h2>📋 Tabelle KPI</h2>
+      <p>Valori mensili per anno — celle rosse sopra target, verdi sotto</p>
+    </div>
+    <div id="tabelle-content"></div>
+  </div><!-- /page-tabelle -->
+
   <div class="page" id="page-dati">
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;">
       <div>
@@ -1470,9 +1482,10 @@ function showDS(name) {
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-'+name));
-  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', ['dashboard','grafici','dati'][i] === name));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', ['dashboard','grafici','tabelle','dati'][i] === name));
   if (name === 'dashboard' && allData.length > 0) computeTable();
   if (name === 'grafici') renderGrafici();
+  if (name === 'tabelle') renderTabelle();
 }
 
 // ════════════════════════════════════════════════════
@@ -2170,6 +2183,181 @@ function kpiMagnifier(e) {
   lCtx.stroke();
 
   lCtx.restore();
+}
+
+// ════════════════════════════════════════════════════
+// TABELLE KPI
+// ════════════════════════════════════════════════════
+function renderTabelle() {
+  const container = document.getElementById('tabelle-content');
+  if (!container) return;
+  if (!allData.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><h3>Nessun dato caricato</h3></div>';
+    return;
+  }
+
+  const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  // Definizione KPI
+  const kpiList = [
+    { id:'kpiStab1', label:'IPG Elettrico Stabilimento', unit:'kWh/kg', target:2.590, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.blindo400, C.blindo630]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiStab2', label:'IPS Stampaggio', unit:'kWh/kg', target:1.830, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.plant2sx, C.plant2dx, C.blindo400, C.blindo630]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiStab3', label:'IPS Acqua Fredda', unit:'kWh/kg', target:0.178, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.rs370, C.rs400, C.frigoRS330, C.frigoAtem]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiStab4', label:'IPS Aria', unit:'kWh/kg', target:0.259, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiStab5', label:'EnPI Aria Compressa', unit:'kWh/Nm³', target:0.170, decimals:4,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+        const den = getAriaNmcByYearMonth();
+        return {num, den};
+      }
+    },
+    { id:'pompaggi', label:'Pompaggi', unit:'kWh', target:null, decimals:0,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.pompe]);
+        return {num, den:null};
+      }
+    },
+    { id:'kpiFrigo1', label:'kWh Frigoriferi / kg', unit:'kWh/kg', target:null, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.rs370, C.rs400, C.frigoRS330, C.frigoAtem]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiFrigo2', label:'kWh Frigoriferi / ore', unit:'kWh/h', target:null, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.rs370, C.rs400, C.frigoRS330, C.frigoAtem]);
+        const den = getProdByYearMonth().ore;
+        return {num, den};
+      }
+    },
+    { id:'kpiAria1', label:'kWh Compressori / Nm³', unit:'kWh/Nm³', target:0.170, decimals:4,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+        const den = getAriaNmcByYearMonth();
+        return {num, den};
+      }
+    },
+    { id:'kpiAria2', label:'kWh Compressori / kg', unit:'kWh/kg', target:0.259, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+        const den = getProdByYearMonth().kg;
+        return {num, den};
+      }
+    },
+    { id:'kpiAria3', label:'kWh Compressori / ore', unit:'kWh/h', target:null, decimals:3,
+      getFn: () => {
+        const num = getMonthlyByYearMulti([C.compressori, C.salacompNH]);
+        const den = getProdByYearMonth().ore;
+        return {num, den};
+      }
+    },
+  ];
+
+  const years = [...new Set(allData.map(r=>r.dt.getUTCFullYear()))].sort();
+
+  let html = '';
+  kpiList.forEach(kpi => {
+    const {num, den} = kpi.getFn();
+
+    // Calcola ratioByYear
+    const ratioByYear = {};
+    years.forEach(y => {
+      ratioByYear[y] = new Array(12).fill(0);
+      const n = num[y] || new Array(12).fill(0);
+      const d = den ? (den[y] || new Array(12).fill(0)) : null;
+      for (let m=0; m<12; m++) {
+        if (d) ratioByYear[y][m] = (n[m]>0 && d[m]>0) ? n[m]/d[m] : 0;
+        else   ratioByYear[y][m] = n[m] || 0;
+      }
+    });
+
+    // Medie annuali
+    const medieAnno = {};
+    years.forEach(y => {
+      const vals = ratioByYear[y].filter(v=>v>0);
+      medieAnno[y] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+    });
+
+    const targetStr = kpi.target ? ` — Target: ${kpi.target} ${kpi.unit}` : '';
+
+    html += `<div class="card" style="margin-bottom:20px;padding:0;overflow:hidden;">
+      <div style="padding:14px 20px;background:var(--accent);color:#fff;font-weight:700;font-size:13px;font-family:var(--mono);">
+        ${kpi.label} <span style="font-size:11px;opacity:.8;">(${kpi.unit})${targetStr}</span>
+      </div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+        <thead>
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px 14px;text-align:left;font-weight:700;color:#374151;border-bottom:2px solid var(--border);min-width:90px;">MESE</th>
+            ${years.map(y=>`<th style="padding:8px 14px;text-align:right;font-weight:700;color:#374151;border-bottom:2px solid var(--border);">${y}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>`;
+
+    MESI.forEach((mese, mi) => {
+      const rowBg = mi%2===0 ? '#fff' : '#fafafa';
+      html += `<tr style="background:${rowBg};">
+        <td style="padding:7px 14px;font-weight:600;color:#374151;border-bottom:1px solid var(--surface2);">${mese}</td>`;
+
+      years.forEach(y => {
+        const val = ratioByYear[y][mi];
+        let bg='', color='', fw='400';
+        if (val>0 && kpi.target) {
+          if (val > kpi.target) { bg='rgba(239,68,68,.12)'; color='#dc2626'; fw='700'; }
+          else                  { bg='rgba(22,163,74,.12)';  color='#16a34a'; fw='700'; }
+        }
+        const txt = val>0
+          ? (kpi.decimals===0 ? Math.round(val).toLocaleString('it-IT') : val.toFixed(kpi.decimals))
+          : '<span style="color:#d1d5db;">—</span>';
+        html += `<td style="padding:7px 14px;text-align:right;background:${bg};color:${color};font-weight:${fw};border-bottom:1px solid var(--surface2);">${txt}</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    // Riga MEDIA
+    html += `<tr style="background:#f1f5f9;border-top:2px solid var(--border);">
+      <td style="padding:8px 14px;font-weight:700;color:#374151;">MEDIA</td>`;
+    years.forEach(y => {
+      const val = medieAnno[y];
+      let bg='', color='', fw='700';
+      if (val>0 && kpi.target) {
+        if (val > kpi.target) { bg='rgba(239,68,68,.15)'; color='#dc2626'; }
+        else                  { bg='rgba(22,163,74,.15)';  color='#16a34a'; }
+      }
+      const txt = val>0
+        ? (kpi.decimals===0 ? Math.round(val).toLocaleString('it-IT') : val.toFixed(kpi.decimals))
+        : '—';
+      html += `<td style="padding:8px 14px;text-align:right;background:${bg};color:${color};font-weight:${fw};">${txt}</td>`;
+    });
+    html += `</tr></tbody></table></div></div>`;
+  });
+
+  container.innerHTML = html;
 }
 
 // ════════════════════════════════════════════════════
