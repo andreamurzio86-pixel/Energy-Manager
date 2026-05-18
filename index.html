@@ -2580,9 +2580,9 @@ function calcGasLetture() {
     const dOreB   = dOreB1 + dOreB2;
     const dOreP   = dOreP1 + dOreP2;
 
-    // IPG = Sm³ / (ΔOre bruciatori) × (T caldaia - T esterna)
+    // IPG = Sm³ / (ΔOre bruciatori) / (T caldaia - T esterna)
     const deltaT = (r.tCaldaia||0) - (r.tEsterna||0);
-    const ipg    = (smcSett>0 && dOreB>0 && deltaT>0) ? smcSett / dOreB * deltaT : null;
+    const ipg    = (smcSett>0 && dOreB>0 && deltaT>0) ? smcSett / dOreB / deltaT : null;
 
     // Eff. regolazione = Σ ore bruciatori / Σ ore pompe (cumulativo stagione)
     const prevCumB = prev ? prev.cumOreB : 0;
