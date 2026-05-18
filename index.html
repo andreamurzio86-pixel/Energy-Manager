@@ -1602,7 +1602,11 @@ function showDS(name) {
   if (name==='bollette') renderBollette();
   if (name==='produzione') renderProduzione();
   if (name==='aria') requestAnimationFrame(()=>{ runAriaQuality(); renderAriaMensile(); });
-  if (name==='gas') { renderGasStagioni(); renderGasTable(); }
+  if (name==='gas') {
+    console.log('[gas] GAS_DATA:', GAS_DATA.stagioni?.length, 'stagioni,', GAS_DATA.letture?.length, 'letture');
+    renderGasStagioni();
+    renderGasTable();
+  }
 }
 
 function showPage(name) {
@@ -3244,6 +3248,8 @@ function restoreFromObject(data) {
   if (ariaData.length) { updateAriaPill(); renderAriaMensile(); }
   renderBollette(); renderProduzione(); populateFilterSelectors();
   if (allData.length) computeTable();
+  // Gas
+  if (GAS_DATA.letture?.length) { renderGasStagioni(); renderGasTable(); }
 }
 
 function updateStoragePill() {
