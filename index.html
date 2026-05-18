@@ -3229,9 +3229,15 @@ function restoreFromObject(data) {
     });
     PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
   }
-  if (data.gas?.length) {
-    GAS_DATA = data.gas;
-    localStorage.setItem('energyGasData', JSON.stringify(GAS_DATA));
+  if (data.gas) {
+    if (Array.isArray(data.gas)) {
+      // vecchio formato array — ignora
+    } else {
+      GAS_DATA = data.gas;
+      if (!GAS_DATA.stagioni) GAS_DATA.stagioni = [];
+      if (!GAS_DATA.letture)  GAS_DATA.letture  = [];
+      localStorage.setItem('energyGasData', JSON.stringify(GAS_DATA));
+    }
   }
   // Aggiorna UI
   if (allData.length) { updateStoragePill(); runQualityCheck(allData.length,0,0,'verify'); }
@@ -5125,9 +5131,8 @@ try {
   const savedGas=localStorage.getItem('energyGasData');
   if(savedGas) {
     const parsed = JSON.parse(savedGas);
-    // Gestisce sia vecchio formato (array) che nuovo (oggetto con stagioni/letture)
-    if (Array.isArray(parsed)) GAS_DATA = {stagioni:[], letture:[]};
-    else GAS_DATA = parsed;
+    if (!Array.isArray(parsed) && parsed.stagioni) GAS_DATA = parsed;
+    else GAS_DATA = {stagioni:[], letture:[]};
   }
 } catch(e){}
 if (allData.length>0){updateStoragePill();runQualityCheck(allData.length,0,0,'verify');}
