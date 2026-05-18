@@ -508,8 +508,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <!-- ══ MODALITÀ SINGOLO ══ -->
     <div id="modeSingolo">
       <div class="filter-bar">
-        <label>MESE</label><select id="selMonth"></select>
+        <label>DA</label><select id="selMonth"></select>
         <label>ANNO</label><select id="selMonthYear"></select>
+        <label>A</label><select id="selMonthTo"></select>
+        <label>ANNO</label><select id="selMonthYearTo"></select>
         <button class="btn-apply" onclick="computeTable()">AGGIORNA</button>
       </div>
       <div class="empty" id="emptyState">
@@ -634,6 +636,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
       <button class="ds-tab" onclick="showDS('bollette')">📄 Dati Bollette</button>
       <button class="ds-tab" onclick="showDS('produzione')">📦 Dati Produzione</button>
       <button class="ds-tab" onclick="showDS('aria')">💨 Dati Aria</button>
+      <button class="ds-tab" onclick="showDS('gas')">🔥 Dati Gas</button>
     </div>
 
     <!-- ── BLINDO ── -->
@@ -992,6 +995,127 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
       </div>
     </div>
 
+    <!-- ── GAS ── -->
+    <div class="ds-panel" id="ds-gas" style="display:none;">
+
+      <!-- STAGIONI -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:12px;">⚙️ FATTORI DI CONVERSIONE PER STAGIONE</div>
+        <div id="gasStagioniList" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">STAGIONE (es. 2025-2026)</label>
+            <input type="text" id="gasNuovaStagione" placeholder="2025-2026" style="padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:120px;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">FATTORE CONVERSIONE</label>
+            <input type="text" inputmode="decimal" id="gasNuovoFattore" placeholder="es. 5,53" style="padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:100px;">
+          </div>
+          <button onclick="addGasStagione()" style="background:var(--accent);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">+ Aggiungi</button>
+        </div>
+      </div>
+
+      <!-- INSERIMENTO SETTIMANALE -->
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:12px;">📝 INSERIMENTO LETTURA SETTIMANALE</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">DATA LETTURA</label>
+            <input type="date" id="gasData" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">ANALOGICO</label>
+            <input type="text" inputmode="decimal" id="gasAnalogico" placeholder="es. 96361" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">ORE BRUCIATORE 1</label>
+            <input type="text" inputmode="decimal" id="gasOreB1" placeholder="es. 41" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">ORE BRUCIATORE 2</label>
+            <input type="text" inputmode="decimal" id="gasOreB2" placeholder="es. 12" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">ORE POMPA 1</label>
+            <input type="text" inputmode="decimal" id="gasOreP1" placeholder="es. 29" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">ORE POMPA 2</label>
+            <input type="text" inputmode="decimal" id="gasOreP2" placeholder="es. 116" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">T MEDIA CALDAIA</label>
+            <input type="text" inputmode="decimal" id="gasTCaldaia" placeholder="es. 48,7" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">T MEDIA ESTERNA</label>
+            <input type="text" inputmode="decimal" id="gasTEsterna" placeholder="es. 13,9" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px;">NOTE</label>
+            <input type="text" id="gasNote" placeholder="es. Prima lettura" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;box-sizing:border-box;">
+          </div>
+        </div>
+        <div id="gasCalcPreview" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:#166534;margin-bottom:12px;display:none;"></div>
+        <button onclick="addGasLettura()" style="background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;">+ Aggiungi Lettura</button>
+      </div>
+
+      <!-- KPI STAGIONE CORRENTE -->
+      <div id="gasKpiCard" style="display:none;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;" id="gasKpiGrid"></div>
+      </div>
+
+      <!-- TABELLA SETTIMANALE -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 18px;background:#b45309;color:#fff;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+          <span>🔥 LETTURE SETTIMANALI</span>
+          <div style="display:flex;gap:8px;">
+            <select id="gasFilterStagione" onchange="renderGasTable()" style="font-size:11px;padding:4px 8px;border:none;border-radius:6px;background:rgba(255,255,255,.2);color:#fff;"></select>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;">
+            <thead>
+              <tr style="background:#92400e;color:#fff;">
+                <th style="padding:7px 10px;text-align:left;">DATA</th>
+                <th style="padding:7px 10px;text-align:right;">ANALOGICO</th>
+                <th style="padding:7px 10px;text-align:right;">CONVERTITO</th>
+                <th style="padding:7px 10px;text-align:right;">Sm³ SETT.</th>
+                <th style="padding:7px 10px;text-align:right;">CUMULATIVO</th>
+                <th style="padding:7px 10px;text-align:right;">ΔOre B1</th>
+                <th style="padding:7px 10px;text-align:right;">ΔOre B2</th>
+                <th style="padding:7px 10px;text-align:right;">ΔOre P1</th>
+                <th style="padding:7px 10px;text-align:right;">ΔOre P2</th>
+                <th style="padding:7px 10px;text-align:right;">T Cald.</th>
+                <th style="padding:7px 10px;text-align:right;">T Est.</th>
+                <th style="padding:7px 10px;text-align:right;">IPG</th>
+                <th style="padding:7px 10px;text-align:right;">Eff.Reg.</th>
+                <th style="padding:7px 10px;text-align:center;">NOTE</th>
+                <th style="padding:7px 10px;text-align:center;">✕</th>
+              </tr>
+            </thead>
+            <tbody id="gasTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIEPILOGO MENSILE -->
+      <div class="card" style="padding:0;overflow:hidden;margin-top:16px;" id="gasMensileCard">
+        <div style="padding:12px 18px;background:#92400e;color:#fff;font-size:13px;font-weight:700;">📅 RIEPILOGO MENSILE</div>
+        <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">
+          <thead><tr style="background:#fef3c7;">
+            <th style="padding:8px 12px;text-align:left;color:#92400e;">MESE</th>
+            <th style="padding:8px 12px;text-align:right;color:#92400e;">Sm³</th>
+            <th style="padding:8px 12px;text-align:right;color:#92400e;">Ore Bruciatori</th>
+            <th style="padding:8px 12px;text-align:right;color:#92400e;">Ore Pompe</th>
+            <th style="padding:8px 12px;text-align:right;color:#92400e;">IPG medio</th>
+            <th style="padding:8px 12px;text-align:right;color:#92400e;">Eff. Reg. %</th>
+          </tr></thead>
+          <tbody id="gasMensileBody"></tbody>
+        </table></div>
+      </div>
+
+    </div>
   </div><!-- /page-dati -->
 
   <!-- ══ PAGE: GRAFICI ══ -->
@@ -1473,11 +1597,12 @@ function restoreBackup(file) {
 }
 
 function showDS(name) {
-  document.querySelectorAll('.ds-tab').forEach((t,i) => t.classList.toggle('active', ['blindo','presse','bollette','produzione','aria'][i]===name));
+  document.querySelectorAll('.ds-tab').forEach((t,i) => t.classList.toggle('active', ['blindo','presse','bollette','produzione','aria','gas'][i]===name));
   document.querySelectorAll('.ds-panel').forEach(p => p.classList.toggle('active', p.id==='ds-'+name));
   if (name==='bollette') renderBollette();
   if (name==='produzione') renderProduzione();
   if (name==='aria') requestAnimationFrame(()=>{ runAriaQuality(); renderAriaMensile(); });
+  if (name==='gas') { renderGasStagioni(); renderGasTable(); }
 }
 
 function showPage(name) {
@@ -2361,6 +2486,252 @@ function renderTabelle() {
 }
 
 // ════════════════════════════════════════════════════
+// GAS
+// ════════════════════════════════════════════════════
+let GAS_DATA = {
+  stagioni: [],   // [{id:'2025-2026', fattore:5.53}]
+  letture:  []    // [{data, analogico, oreB1, oreB2, oreP1, oreP2, tCaldaia, tEsterna, note, stagione}]
+};
+
+function parseNumGas(s) {
+  return parseFloat(String(s||'').trim().replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function getStagionePerData(dateStr) {
+  // Determina stagione (OTT-APR) per una data
+  const d = new Date(dateStr);
+  const m = d.getMonth(); // 0=Gen
+  const y = d.getFullYear();
+  // OTT(9)-DIC(11) → stagione y-(y+1), GEN(0)-APR(3) → stagione (y-1)-y
+  const startY = (m >= 9) ? y : y-1;
+  const endY   = startY + 1;
+  return `${startY}-${endY}`;
+}
+
+function getFattoreStagione(stagId) {
+  const s = GAS_DATA.stagioni.find(x=>x.id===stagId);
+  return s ? s.fattore : 1;
+}
+
+function addGasStagione() {
+  const id      = document.getElementById('gasNuovaStagione').value.trim();
+  const fattore = parseNumGas(document.getElementById('gasNuovoFattore').value);
+  if (!id || !fattore) { alert('Inserisci stagione e fattore'); return; }
+  const idx = GAS_DATA.stagioni.findIndex(s=>s.id===id);
+  if (idx>=0) GAS_DATA.stagioni[idx].fattore = fattore;
+  else GAS_DATA.stagioni.push({id, fattore});
+  GAS_DATA.stagioni.sort((a,b)=>a.id.localeCompare(b.id));
+  document.getElementById('gasNuovaStagione').value='';
+  document.getElementById('gasNuovoFattore').value='';
+  saveGasData();
+  renderGasStagioni();
+  renderGasTable();
+}
+
+function deleteGasStagione(id) {
+  GAS_DATA.stagioni = GAS_DATA.stagioni.filter(s=>s.id!==id);
+  saveGasData();
+  renderGasStagioni();
+  renderGasTable();
+}
+
+function renderGasStagioni() {
+  const el = document.getElementById('gasStagioniList');
+  if (!el) return;
+  if (!GAS_DATA.stagioni.length) {
+    el.innerHTML='<div style="font-size:12px;color:var(--text-muted);font-family:var(--mono);">Nessuna stagione configurata</div>';
+    return;
+  }
+  el.innerHTML = GAS_DATA.stagioni.map(s=>`
+    <div style="display:inline-flex;align-items:center;gap:8px;background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;">
+      <span style="font-weight:700;font-family:var(--mono);">🔥 ${s.id}</span>
+      <span style="color:#92400e;">fattore: <b>${s.fattore}</b></span>
+      <button onclick="deleteGasStagione('${s.id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:13px;padding:0;">✕</button>
+    </div>`).join('');
+}
+
+function calcGasLetture() {
+  // Ordina letture per data
+  const sorted = [...GAS_DATA.letture].sort((a,b)=>new Date(a.data)-new Date(b.data));
+  const result = [];
+  // Raggruppa per stagione per il cumulativo
+  const cumByStagione = {};
+
+  sorted.forEach((r, i) => {
+    const stagione  = getStagionePerData(r.data);
+    const fattore   = getFattoreStagione(stagione);
+    const convertito = r.analogico * fattore;
+
+    // Precedente della stessa stagione
+    const prev = result.filter(x=>x.stagione===stagione).slice(-1)[0];
+    const smcSett    = prev ? convertito - prev.convertito : 0;
+    const cumul      = prev ? prev.cumul + smcSett : smcSett;
+
+    // Delta ore (cumulative nel file → delta rispetto alla lettura precedente assoluta)
+    const prevAbs = i > 0 ? result[i-1] : null;
+    const dOreB1  = prevAbs ? r.oreB1 - prevAbs.oreB1 : 0;
+    const dOreB2  = prevAbs ? r.oreB2 - prevAbs.oreB2 : 0;
+    const dOreP1  = prevAbs ? r.oreP1 - prevAbs.oreP1 : 0;
+    const dOreP2  = prevAbs ? r.oreP2 - prevAbs.oreP2 : 0;
+    const dOreB   = dOreB1 + dOreB2;
+    const dOreP   = dOreP1 + dOreP2;
+
+    // IPG = Sm³ / (ΔOre bruciatori) × (T caldaia - T esterna)
+    const deltaT = (r.tCaldaia||0) - (r.tEsterna||0);
+    const ipg    = (smcSett>0 && dOreB>0 && deltaT>0) ? smcSett / dOreB * deltaT : null;
+
+    // Eff. regolazione = Σ ore bruciatori / Σ ore pompe (cumulativo stagione)
+    const prevCumB = prev ? prev.cumOreB : 0;
+    const prevCumP = prev ? prev.cumOreP : 0;
+    const cumOreB  = prevCumB + dOreB;
+    const cumOreP  = prevCumP + dOreP;
+    const effReg   = cumOreP > 0 ? cumOreB / cumOreP : null;
+
+    result.push({...r, stagione, fattore, convertito, smcSett, cumul, dOreB1, dOreB2, dOreP1, dOreP2, dOreB, dOreP, ipg, effReg, cumOreB, cumOreP});
+  });
+  return result;
+}
+
+function addGasLettura() {
+  const data      = document.getElementById('gasData').value;
+  const analogico = parseNumGas(document.getElementById('gasAnalogico').value);
+  const oreB1     = parseNumGas(document.getElementById('gasOreB1').value);
+  const oreB2     = parseNumGas(document.getElementById('gasOreB2').value);
+  const oreP1     = parseNumGas(document.getElementById('gasOreP1').value);
+  const oreP2     = parseNumGas(document.getElementById('gasOreP2').value);
+  const tCaldaia  = parseNumGas(document.getElementById('gasTCaldaia').value);
+  const tEsterna  = parseNumGas(document.getElementById('gasTEsterna').value);
+  const note      = document.getElementById('gasNote').value.trim();
+
+  if (!data || !analogico) { alert('Inserisci almeno data e valore analogico'); return; }
+
+  // Rimuovi eventuale lettura della stessa data
+  GAS_DATA.letture = GAS_DATA.letture.filter(r=>r.data!==data);
+  GAS_DATA.letture.push({data, analogico, oreB1, oreB2, oreP1, oreP2, tCaldaia, tEsterna, note});
+  GAS_DATA.letture.sort((a,b)=>new Date(a.data)-new Date(b.data));
+
+  // Reset form
+  ['gasData','gasAnalogico','gasOreB1','gasOreB2','gasOreP1','gasOreP2','gasTCaldaia','gasTEsterna','gasNote']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+
+  saveGasData();
+  renderGasTable();
+}
+
+function deleteGasLettura(dataStr) {
+  GAS_DATA.letture = GAS_DATA.letture.filter(r=>r.data!==dataStr);
+  saveGasData();
+  renderGasTable();
+}
+
+function saveGasData() {
+  localStorage.setItem('energyGasData', JSON.stringify(GAS_DATA));
+  autoSaveGitHub();
+}
+
+function renderGasTable() {
+  const tbody       = document.getElementById('gasTableBody');
+  const filterSel   = document.getElementById('gasFilterStagione');
+  const mensileBody = document.getElementById('gasMensileBody');
+  const kpiCard     = document.getElementById('gasKpiCard');
+  const kpiGrid     = document.getElementById('gasKpiGrid');
+  if (!tbody) return;
+
+  const calcolate = calcGasLetture();
+
+  // Popola filtro stagioni
+  const stagioni = [...new Set(calcolate.map(r=>r.stagione))].sort();
+  const selVal   = filterSel?.value || stagioni[stagioni.length-1] || '';
+  if (filterSel) {
+    filterSel.innerHTML = stagioni.map(s=>`<option value="${s}">${s}</option>`).join('');
+    filterSel.value = selVal || stagioni[stagioni.length-1];
+  }
+  const stagFilt = filterSel?.value || stagioni[stagioni.length-1];
+  const filtrate = calcolate.filter(r=>r.stagione===stagFilt);
+
+  if (!filtrate.length) {
+    tbody.innerHTML='<tr><td colspan="15" style="padding:20px;text-align:center;color:var(--text-muted);">Nessuna lettura per questa stagione</td></tr>';
+    if (mensileBody) mensileBody.innerHTML='';
+    if (kpiCard) kpiCard.style.display='none';
+    return;
+  }
+
+  // KPI stagione
+  const totSmc   = filtrate[filtrate.length-1].cumul;
+  const totOreB  = filtrate[filtrate.length-1].cumOreB;
+  const totOreP  = filtrate[filtrate.length-1].cumOreP;
+  const effTot   = totOreP>0 ? (totOreB/totOreP*100).toFixed(1)+'%' : '—';
+  const ipgVals  = filtrate.filter(r=>r.ipg!==null).map(r=>r.ipg);
+  const ipgMedio = ipgVals.length ? (ipgVals.reduce((a,b)=>a+b,0)/ipgVals.length).toFixed(2) : '—';
+  const fattore  = getFattoreStagione(stagFilt);
+
+  if (kpiCard && kpiGrid) {
+    kpiCard.style.display='block';
+    kpiGrid.innerHTML=`
+      <div class="qk ok" style="text-align:center;"><div class="qk-val">${Math.round(totSmc).toLocaleString('it-IT')}</div><div class="qk-lbl">Sm³ Totali stagione</div></div>
+      <div class="qk" style="text-align:center;"><div class="qk-val">${Math.round(totOreB).toLocaleString('it-IT')}</div><div class="qk-lbl">Ore Bruciatori tot.</div></div>
+      <div class="qk" style="text-align:center;"><div class="qk-val">${effTot}</div><div class="qk-lbl">Eff. Regolazione</div></div>
+      <div class="qk" style="text-align:center;"><div class="qk-val">${ipgMedio}</div><div class="qk-lbl">IPG medio stagione</div></div>`;
+  }
+
+  // Tabella settimanale
+  const fmt  = v => v!=null ? v.toLocaleString('it-IT',{maximumFractionDigits:2}) : '—';
+  const fmt3 = v => v!=null ? v.toFixed(3) : '—';
+  const MESI_IT=['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
+
+  tbody.innerHTML = filtrate.map((r,i)=>{
+    const dt   = new Date(r.data);
+    const dStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+    const bg   = i%2===0?'#fff':'#fafafa';
+    const ipgCol = r.ipg!=null ? (r.ipg>1.2?'color:#dc2626;font-weight:700':r.ipg<0.8?'color:#16a34a;font-weight:700':'') : '';
+    return `<tr style="background:${bg};border-bottom:1px solid var(--surface2);">
+      <td style="padding:5px 10px;white-space:nowrap;">${dStr}</td>
+      <td style="padding:5px 10px;text-align:right;">${fmt(r.analogico)}</td>
+      <td style="padding:5px 10px;text-align:right;">${fmt(r.convertito)}</td>
+      <td style="padding:5px 10px;text-align:right;font-weight:${r.smcSett>0?'700':'400'};">${r.smcSett>0?fmt(r.smcSett):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${fmt(r.cumul)}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.dOreB1>0?fmt(r.dOreB1):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.dOreB2>0?fmt(r.dOreB2):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.dOreP1>0?fmt(r.dOreP1):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.dOreP2>0?fmt(r.dOreP2):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.tCaldaia||'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.tEsterna||'—'}</td>
+      <td style="padding:5px 10px;text-align:right;${ipgCol}">${r.ipg!=null?r.ipg.toFixed(2):'—'}</td>
+      <td style="padding:5px 10px;text-align:right;">${r.effReg!=null?(r.effReg*100).toFixed(1)+'%':'—'}</td>
+      <td style="padding:5px 10px;color:var(--text-muted);font-size:10px;">${r.note||''}</td>
+      <td style="padding:5px 10px;text-align:center;"><button onclick="deleteGasLettura('${r.data}')" style="background:none;border:none;cursor:pointer;color:#dc2626;">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // Riepilogo mensile
+  if (mensileBody) {
+    const mensile = {};
+    filtrate.forEach(r => {
+      const dt  = new Date(r.data);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      if (!mensile[key]) mensile[key] = {smc:0, oreB:0, oreP:0, ipgSum:0, ipgN:0, label:`${MESI_IT[dt.getMonth()]} ${dt.getFullYear()}`};
+      mensile[key].smc  += r.smcSett;
+      mensile[key].oreB += r.dOreB;
+      mensile[key].oreP += r.dOreP;
+      if (r.ipg!=null) { mensile[key].ipgSum+=r.ipg; mensile[key].ipgN++; }
+    });
+    mensileBody.innerHTML = Object.keys(mensile).sort().map((k,i)=>{
+      const m   = mensile[k];
+      const ipg = m.ipgN>0 ? (m.ipgSum/m.ipgN).toFixed(2) : '—';
+      const eff = m.oreP>0 ? (m.oreB/m.oreP*100).toFixed(1)+'%' : '—';
+      return `<tr style="background:${i%2===0?'#fff':'#fafafa'};border-bottom:1px solid var(--surface2);">
+        <td style="padding:7px 12px;font-weight:600;">${m.label}</td>
+        <td style="padding:7px 12px;text-align:right;font-weight:700;">${Math.round(m.smc).toLocaleString('it-IT')}</td>
+        <td style="padding:7px 12px;text-align:right;">${Math.round(m.oreB).toLocaleString('it-IT')}</td>
+        <td style="padding:7px 12px;text-align:right;">${Math.round(m.oreP).toLocaleString('it-IT')}</td>
+        <td style="padding:7px 12px;text-align:right;">${ipg}</td>
+        <td style="padding:7px 12px;text-align:right;">${eff}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ════════════════════════════════════════════════════
 // CONFRONTO PERIODI
 // ════════════════════════════════════════════════════
 let dashMode = 'singolo';
@@ -2754,6 +3125,7 @@ function exportData() {
     aria: ariaData.map(r=>[r.key, r.dt.getTime(), r.portata, r.pmax, r.pmedia]),
     bollette: BOLLETTE,
     produzione: PROD_MENSILE,
+    gas: GAS_DATA,
   };
   const total = backup.blindo.length + backup.aria.length;
   if (!total && !backup.bollette.length && !backup.produzione.length) { alert('Nessun dato da salvare.'); return; }
@@ -2856,6 +3228,10 @@ function restoreFromObject(data) {
       if (idx>=0) PROD_MENSILE[idx]=entry; else PROD_MENSILE.push(entry);
     });
     PROD_MENSILE.sort((a,b)=>a.a!==b.a?a.a-b.a:a.m-b.m);
+  }
+  if (data.gas?.length) {
+    GAS_DATA = data.gas;
+    localStorage.setItem('energyGasData', JSON.stringify(GAS_DATA));
   }
   // Aggiorna UI
   if (allData.length) { updateStoragePill(); runQualityCheck(allData.length,0,0,'verify'); }
@@ -3126,10 +3502,11 @@ function addIssue(container,type,text){
 // ════════════════════════════════════════════════════
 function populateFilterSelectors() {
   const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-  const selMonth=document.getElementById('selMonth');
-  const selYear=document.getElementById('selMonthYear');
+  const selMonth    = document.getElementById('selMonth');
+  const selYear     = document.getElementById('selMonthYear');
+  const selMonthTo  = document.getElementById('selMonthTo');
+  const selYearTo   = document.getElementById('selMonthYearTo');
 
-  // Usa i mesi disponibili nei dati Blindo (più completi delle bollette)
   const mesiDisponibili = new Set();
   allData.forEach(r => {
     const y=r.dt.getUTCFullYear(), m=r.dt.getUTCMonth();
@@ -3137,44 +3514,54 @@ function populateFilterSelectors() {
   });
 
   const years=[...new Set([...mesiDisponibili].map(k=>parseInt(k.split('-')[0])))].sort();
-  if (!years.length) {
-    // Fallback su bollette se non ci sono blindo
-    const byYears=[...new Set(BOLLETTE.map(b=>b.a))].sort();
-    selYear.innerHTML=byYears.map(y=>`<option value="${y}">${y}</option>`).join('');
-  } else {
-    selYear.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
-  }
+  const yOpts = years.length
+    ? years.map(y=>`<option value="${y}">${y}</option>`).join('')
+    : [...new Set(BOLLETTE.map(b=>b.a))].sort().map(y=>`<option value="${y}">${y}</option>`).join('');
 
-  function updateMonths() {
-    const y=parseInt(selYear.value);
-    // Mesi disponibili nei Blindo per quell'anno
-    const mesiAnno=[...new Set(
+  selYear.innerHTML    = yOpts;
+  selYearTo.innerHTML  = yOpts;
+
+  function updateMonths(yearSel, monthSel) {
+    const y = parseInt(yearSel.value);
+    const mesiAnno = [...new Set(
       allData.filter(r=>r.dt.getUTCFullYear()===y).map(r=>r.dt.getUTCMonth())
     )].sort((a,b)=>a-b);
     if (mesiAnno.length) {
-      selMonth.innerHTML=mesiAnno.map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
+      monthSel.innerHTML = mesiAnno.map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
     } else {
-      // Fallback bollette
       const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
-      const mBoll=BOLLETTE.filter(b=>b.a===y).map(b=>MESI_IT.indexOf(b.m));
-      selMonth.innerHTML=mBoll.sort((a,b)=>a-b).map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
+      const mBoll = BOLLETTE.filter(b=>b.a===y).map(b=>MESI_IT.indexOf(b.m));
+      monthSel.innerHTML = mBoll.sort((a,b)=>a-b).map(m=>`<option value="${m}">${MESI[m]}</option>`).join('');
     }
   }
-  selYear.onchange=updateMonths;
-  updateMonths();
 
-  // Default all'ultimo mese disponibile nei Blindo
+  selYear.onchange   = () => updateMonths(selYear, selMonth);
+  selYearTo.onchange = () => updateMonths(selYearTo, selMonthTo);
+
+  updateMonths(selYear, selMonth);
+  updateMonths(selYearTo, selMonthTo);
+
+  // Default: DA = primo mese anno corrente, A = ultimo mese disponibile
   if (allData.length) {
-    const lastDt = allData[allData.length-1].dt;
-    selYear.value = lastDt.getUTCFullYear();
-    updateMonths();
-    selMonth.value = lastDt.getUTCMonth();
+    const lastDt  = allData[allData.length-1].dt;
+    const lastY   = lastDt.getUTCFullYear();
+    const lastM   = lastDt.getUTCMonth();
+    // DA: gennaio anno corrente
+    selYear.value  = lastY;
+    updateMonths(selYear, selMonth);
+    selMonth.value = 0; // Gennaio
+    if (!selMonth.value && selMonth.options.length) selMonth.selectedIndex = 0;
+    // A: ultimo mese disponibile
+    selYearTo.value = lastY;
+    updateMonths(selYearTo, selMonthTo);
+    selMonthTo.value = lastM;
   } else if (BOLLETTE.length) {
     const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
-    const latest=BOLLETTE[BOLLETTE.length-1];
-    selYear.value=latest.a;
-    updateMonths();
-    selMonth.value=MESI_IT.indexOf(latest.m);
+    const latest = BOLLETTE[BOLLETTE.length-1];
+    selYearTo.value = latest.a; selYear.value = latest.a;
+    updateMonths(selYear, selMonth); updateMonths(selYearTo, selMonthTo);
+    selMonthTo.value = MESI_IT.indexOf(latest.m);
+    selMonth.value = 0;
   }
 }
 
@@ -3183,9 +3570,18 @@ function onFilterModeChange() {
 }
 
 function getFilteredRows() {
-  const m = parseInt(document.getElementById('selMonth').value);
-  const y = parseInt(document.getElementById('selMonthYear').value);
-  return allData.filter(r => r.dt.getUTCMonth()===m && r.dt.getUTCFullYear()===y);
+  const mFrom = parseInt(document.getElementById('selMonth').value);
+  const yFrom = parseInt(document.getElementById('selMonthYear').value);
+  const mTo   = parseInt(document.getElementById('selMonthTo')?.value ?? mFrom);
+  const yTo   = parseInt(document.getElementById('selMonthYearTo')?.value ?? yFrom);
+
+  return allData.filter(r => {
+    const y = r.dt.getUTCFullYear();
+    const m = r.dt.getUTCMonth();
+    const afterFrom = y > yFrom || (y === yFrom && m >= mFrom);
+    const beforeTo  = y < yTo  || (y === yTo  && m <= mTo);
+    return afterFrom && beforeTo;
+  });
 }
 
 // ════════════════════════════════════════════════════
@@ -4590,14 +4986,22 @@ async function eseguiAggiornamentoSettimanale() {
         const reader = new FileReader();
         reader.onload = ev => {
           const before = allData.length;
-          parseTSV(ev.target.result, null);
+          const pr = parseTSV(ev.target.result, null);
+          if (pr.rows.length === 0) {
+            log('⚠ Blindo: nessuna riga valida nel file');
+            resolve(); return;
+          }
+          const {merged, added} = mergeData(allData, pr.rows);
+          allData = merged;
+          allData.sort((a,b)=>a.dt-b.dt);
           saveToStorage();
           updateStoragePill();
           populateFilterSelectors();
           computeTable();
-          log(`✅ Blindo: ${allData.length.toLocaleString('it-IT')} ore totali (+${allData.length-before})`);
+          log(`✅ Blindo: ${allData.length.toLocaleString('it-IT')} ore totali (+${added} nuove)`);
           resolve();
         };
+        reader.onerror = () => { log('❌ Errore lettura file Blindo'); resolve(); };
         reader.readAsText(window.sw_file_blindo, 'windows-1252');
       });
     }
@@ -4715,6 +5119,15 @@ try {
     const MESI_IT=['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
     parsed.forEach(b=>{ if(!BOLLETTE.find(x=>x.m===b.m&&x.a===b.a)) BOLLETTE.push(b); });
     BOLLETTE.sort((a,b)=>a.a!==b.a?a.a-b.a:MESI_IT.indexOf(a.m)-MESI_IT.indexOf(b.m));
+  }
+} catch(e){}
+try {
+  const savedGas=localStorage.getItem('energyGasData');
+  if(savedGas) {
+    const parsed = JSON.parse(savedGas);
+    // Gestisce sia vecchio formato (array) che nuovo (oggetto con stagioni/letture)
+    if (Array.isArray(parsed)) GAS_DATA = {stagioni:[], letture:[]};
+    else GAS_DATA = parsed;
   }
 } catch(e){}
 if (allData.length>0){updateStoragePill();runQualityCheck(allData.length,0,0,'verify');}
