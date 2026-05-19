@@ -1065,6 +1065,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;" id="gasKpiGrid"></div>
       </div>
 
+      <!-- LEGENDA -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:8px;">📊 IPG — Sm³/(ore bruciatori × ΔT)</div>
+          <div style="font-size:12px;line-height:2;font-family:var(--mono);">
+            <span style="color:#16a34a;font-weight:700;">🟢 0.70 – 0.85</span> → OK<br>
+            <span style="color:#ca8a04;font-weight:700;">🟡 0.85 – 1.00</span> → Attenzione<br>
+            <span style="color:#ea580c;font-weight:700;">🟠 1.00 – 1.20</span> → Intervento leggero<br>
+            <span style="color:#dc2626;font-weight:700;">🔴 &gt; 1.20</span> → Intervento necessario
+          </div>
+        </div>
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);font-family:var(--mono);letter-spacing:1px;margin-bottom:8px;">⚙️ EFFICIENZA REGOLAZIONE CALDAIA — Ore bruciatori / Ore pompe</div>
+          <div style="font-size:12px;line-height:2;font-family:var(--mono);">
+            <span style="color:#16a34a;font-weight:700;">🟢 0.40 – 0.70</span> → Modulazione corretta<br>
+            <span style="color:#ca8a04;font-weight:700;">🟡 0.30 – 0.40</span> → Cicli frequenti<br>
+            <span style="color:#dc2626;font-weight:700;">🔴 &lt; 0.30</span> → ON/OFF eccessivo<br>
+            <span style="color:#7c3aed;font-weight:700;">🟣 &gt; 0.80</span> → Caldaia sempre accesa
+          </div>
+        </div>
+      </div>
+
       <!-- TABELLA SETTIMANALE -->
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:12px 18px;background:#b45309;color:#fff;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;">
@@ -2687,7 +2709,38 @@ function renderGasTable() {
     const dt   = new Date(r.data);
     const dStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
     const bg   = i%2===0?'#fff':'#fafafa';
-    const ipgCol = r.ipg!=null ? (r.ipg>1.2?'color:#dc2626;font-weight:700':r.ipg<0.8?'color:#16a34a;font-weight:700':'') : '';
+    const ipgLabel = () => {
+      if (r.ipg === null) return '';
+      if (r.ipg <= 0.85) return '<br><span style="font-size:9px;color:#16a34a;">OK</span>';
+      if (r.ipg <= 1.00) return '<br><span style="font-size:9px;color:#ca8a04;">Attenzione</span>';
+      if (r.ipg <= 1.20) return '<br><span style="font-size:9px;color:#ea580c;">Interv. leggero</span>';
+      return '<br><span style="font-size:9px;color:#dc2626;">Interv. necessario</span>';
+    };
+    const effLabel = () => {
+      if (r.effReg === null) return '';
+      const v = r.effReg;
+      if (v >= 0.40 && v <= 0.70) return '<br><span style="font-size:9px;color:#16a34a;">Modulaz. corretta</span>';
+      if (v >= 0.30 && v < 0.40)  return '<br><span style="font-size:9px;color:#ca8a04;">Cicli frequenti</span>';
+      if (v < 0.30)               return '<br><span style="font-size:9px;color:#dc2626;">ON/OFF eccessivo</span>';
+      if (v > 0.80)               return '<br><span style="font-size:9px;color:#7c3aed;">Sempre accesa</span>';
+      return '';
+    };
+    const ipgCol = () => {
+      if (r.ipg === null) return '';
+      if (r.ipg <= 0.85) return 'color:#16a34a;font-weight:700;';
+      if (r.ipg <= 1.00) return 'color:#ca8a04;font-weight:700;';
+      if (r.ipg <= 1.20) return 'color:#ea580c;font-weight:700;';
+      return 'color:#dc2626;font-weight:700;';
+    };
+    const effCol = () => {
+      if (r.effReg === null) return '';
+      const v = r.effReg;
+      if (v >= 0.40 && v <= 0.70) return 'color:#16a34a;font-weight:700;';
+      if (v >= 0.30 && v < 0.40)  return 'color:#ca8a04;font-weight:700;';
+      if (v < 0.30)               return 'color:#dc2626;font-weight:700;';
+      if (v > 0.80)               return 'color:#7c3aed;font-weight:700;';
+      return 'font-weight:700;';
+    };
     return `<tr style="background:${bg};border-bottom:1px solid var(--surface2);">
       <td style="padding:5px 10px;white-space:nowrap;">${dStr}</td>
       <td style="padding:5px 10px;text-align:right;">${fmt(r.analogico)}</td>
@@ -2700,8 +2753,8 @@ function renderGasTable() {
       <td style="padding:5px 10px;text-align:right;">${r.dOreP2>0?fmt(r.dOreP2):'—'}</td>
       <td style="padding:5px 10px;text-align:right;">${r.tCaldaia||'—'}</td>
       <td style="padding:5px 10px;text-align:right;">${r.tEsterna||'—'}</td>
-      <td style="padding:5px 10px;text-align:right;${ipgCol}">${r.ipg!=null?r.ipg.toFixed(2):'—'}</td>
-      <td style="padding:5px 10px;text-align:right;">${r.effReg!=null?(r.effReg*100).toFixed(1)+'%':'—'}</td>
+      <td style="padding:5px 10px;text-align:right;${ipgCol()}">${r.ipg!=null?r.ipg.toFixed(2):'—'}${ipgLabel()}</td>
+      <td style="padding:5px 10px;text-align:right;${effCol()}">${r.effReg!=null?(r.effReg*100).toFixed(1)+'%':'—'}${effLabel()}</td>
       <td style="padding:5px 10px;color:var(--text-muted);font-size:10px;">${r.note||''}</td>
       <td style="padding:5px 10px;text-align:center;"><button onclick="deleteGasLettura('${r.data}')" style="background:none;border:none;cursor:pointer;color:#dc2626;">✕</button></td>
     </tr>`;
